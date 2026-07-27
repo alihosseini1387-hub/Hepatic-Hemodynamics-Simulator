@@ -665,16 +665,16 @@ with st.sidebar:
     )
     
     r0_um = st.number_input(
-        t["r0"], 2.0, 6.0, 4.5, 0.05
+        t["r0"], 2.0, 6.0, 4.0, 0.05
     )
     r0 = r0_um * 1e-6
     
     L_um = st.number_input(
-        t["L"], 100, 500, 320, 5
+        t["L"], 100, 500, 365, 5
     )
     L = L_um * 1e-6
     
-    beta = st.slider(t["beta"], 0.0, 0.8, 0.05, 0.01)
+    beta = st.number_input(t["beta"], 0.0, 0.8, 0.10, 0.01)
     
     st.header(t["filtration_params"])
     
@@ -2208,4 +2208,5 @@ with st.expander(t["comparison_title"], expanded=False):
 # ======================== فوتر ========================
 st.divider()
 st.caption(t["footer"])
-st.caption("Ver:2.0.1 \n Ali Hosseini \n email: ali.hosseini1387@icloud.com")
+st.caption("Ver:2.0.2 ")
+st.caption("Ali Hosseini; email: ali.hosseini1387@icloud.com")
