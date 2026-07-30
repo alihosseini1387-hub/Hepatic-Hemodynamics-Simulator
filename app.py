@@ -2287,47 +2287,7 @@ with st.expander(t["sensitivity_title"], expanded=False):
 
 # ============================================================
 
-#  (Preset Scenarios)
-with st.sidebar.expander(t["preset_title"], expanded=False):
-    preset = st.selectbox(
-        t["preset_title"],
-        [t["preset_custom"], 
-         t["preset_normal"], 
-         t["preset_mild"],
-         t["preset_cirrhosis"],
-         t["preset_refractory"]]
-    )
-    
-    if preset != t["preset_custom"]:
-        if st.button(t["preset_apply"], use_container_width=True):
-            # مقادیر پیش‌فرض برای هر سناریو
-            scenarios = {
-                t["preset_normal"]: {
-                    "Qp": 1.1, "Qa": 0.35, "Kf0": 3.0, "sigma": 0.22,
-                    "Pi0": 0.5, "Jmax": 40, "Km": 0.74, "dPi": 22,
-                    "r0": 4.0, "beta": 0.10, "h": 4.0
-                },
-                t["preset_mild"]: {
-                    "Qp": 1.5, "Qa": 0.45, "Kf0": 4.5, "sigma": 0.25,
-                    "Pi0": 0.7, "Jmax": 40, "Km": 0.74, "dPi": 20,
-                    "r0": 3.8, "beta": 0.20, "h": 4.0
-                },
-                t["preset_cirrhosis"]: {
-                    "Qp": 2.0, "Qa": 0.60, "Kf0": 6.0, "sigma": 0.28,
-                    "Pi0": 1.0, "Jmax": 35, "Km": 0.74, "dPi": 18,
-                    "r0": 3.5, "beta": 0.35, "h": 4.0
-                },
-                t["preset_refractory"]: {
-                    "Qp": 2.5, "Qa": 0.75, "Kf0": 8.0, "sigma": 0.32,
-                    "Pi0": 1.5, "Jmax": 30, "Km": 0.74, "dPi": 16,
-                    "r0": 3.0, "beta": 0.50, "h": 4.0
-                }
-            }
-            
-            sc = scenarios[preset]
-            st.session_state['preset_values'] = sc
-            st.success(t["preset_loaded"].format(name=preset))
-            st.rerun()
+
 
 # ============================================================
 # 2️
