@@ -1,4 +1,4 @@
-@st.cache_data
+
 """
 اپلیکیشن شبیه‌سازی همودینامیک کبد
 بر اساس مقاله: شبیه‌سازی جریان خون در کبد بر اساس اصول و معادلات مکانیک سیالات
@@ -2209,5 +2209,5 @@ with st.expander(t["comparison_title"], expanded=False):
 # ======================== فوتر ========================
 st.divider()
 st.caption(t["footer"])
-st.caption("Ver:2.0.3 ")
+st.caption("Ver:2.0.4 ")
 st.caption("Ali Hosseini; email: ali.hosseini1387@icloud.com")
