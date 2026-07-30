@@ -2730,7 +2730,7 @@ try:
                 
 except ImportError:
     pass
-===============================================
+#===============================================
 # ============================================================
 if 'validation_done' not in st.session_state:
     if Q_portal <= 0:
@@ -2762,5 +2762,5 @@ if 'preset_values' in st.session_state:
 # ======================== فوتر ========================
 st.divider()
 st.caption(t["footer"])
-st.caption("Ver:2.1.1 ")
+st.caption("Ver:2.1.4 ")
 st.caption("Ali Hosseini; email: ali.hosseini1387@icloud.com")
