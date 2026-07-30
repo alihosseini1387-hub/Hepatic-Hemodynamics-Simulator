@@ -18,3 +18,5 @@ streamlit-keyup>=0.1.0
 streamlit-drawable-canvas>=0.9.0
 streamlit-oauth>=0.1.0
 plotly-express>=0.4.0
+fpdf
+plotly-express
