@@ -2706,7 +2706,7 @@ try:
                         camera=dict(eye=dict(x=1.5, y=1.5, z=1.2))
                     ),
                     height=600,
-                    template='plotly_black'
+                    
                 )
                 
                 st.plotly_chart(fig_3d, use_container_width=True)
