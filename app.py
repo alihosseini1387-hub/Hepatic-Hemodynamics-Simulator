@@ -2342,73 +2342,200 @@ with st.sidebar:
 # ============================================================
 # 3️
 # ============================================================
-try:
-    from fpdf import FPDF
-    import datetime
-    import io
-    
-    with st.sidebar.expander(t["pdf_report"], expanded=False):
-        if st.button(t["pdf_download"], use_container_width=True):
-            pdf = FPDF()
-            pdf.add_page()
-            pdf.set_font("Arial", "B", 16)
-            pdf.cell(200, 10, txt=t["pdf_title"], ln=True, align='C')
-            pdf.set_font("Arial", size=10)
-            pdf.cell(200, 10, txt=f"{t['pdf_date']}: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}", ln=True)
-            pdf.ln(10)
-            
-            pdf.set_font("Arial", "B", 12)
-            pdf.cell(200, 10, txt=t["pdf_params"], ln=True)
-            pdf.set_font("Arial", size=10)
-            params_text = [
-                f"Q_portal: {Q_portal*1000*60:.2f} L/min",
-                f"Q_artery: {Q_artery*1000*60:.2f} L/min",
-                f"Kf0: {Kf0:.2f}",
-                f"sigma: {sigma:.2f}",
-                f"Pi0: {Pi0:.2f} mmHg",
-                f"Jmax: {Jmax:.2f} ml/min",
-                f"r0: {r0_um:.2f} μm",
-                f"beta: {beta:.2f}"
-            ]
-            for txt in params_text:
-                pdf.cell(200, 8, txt, ln=True)
-            
-            pdf.ln(10)
-            pdf.set_font("Arial", "B", 12)
-            pdf.cell(200, 10, txt=t["pdf_results"], ln=True)
-            pdf.set_font("Arial", size=10)
-            results_text = [
-                f"ΔP: {deltaP_analysis:.2f} mmHg",
-                f"Jv: {Jv:.2f} ml/min",
-                f"Jlymph: {Jlymph:.2f} ml/min",
-                f"Jnet: {Jnet:.2f} ml/min",
-                f"Kf: {Kf:.3f}",
-                f"Pi: {Pi:.2f} mmHg"
-            ]
-            for txt in results_text:
-                pdf.cell(200, 8, txt, ln=True)
-            
-            pdf.ln(10)
-            pdf.set_font("Arial", "B", 12)
-            pdf.cell(200, 10, txt=t["pdf_clinical"], ln=True)
-            pdf.set_font("Arial", size=10)
-            clinical = get_clinical_interpretation(deltaP_analysis, Jv, Jnet, lang=lang)
-            pdf.multi_cell(200, 8, f"{t['pdf_status']}: {clinical['status']}")
-            pdf.multi_cell(200, 8, f"{t['pdf_description']}: {clinical['description']}")
-            pdf.multi_cell(200, 8, f"{t['pdf_ascites']}: {clinical['ascites_prediction']}")
-            
-            pdf_output = pdf.output(dest='S').encode('latin-1')
-            
-            st.download_button(
-                label="📥 PDF",
-                data=pdf_output,
-                file_name=f"hepatic_report_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
-                mime="application/pdf",
-                use_container_width=True
-            )
-except ImportError:
-    with st.sidebar:
-        st.warning(t["pdf_install_warning"])
+# ============================================================
+# 3️⃣ گزارش PDF (نسخه‌ی پایدار با کتابخانه‌های مختلف)
+# ============================================================
+with st.sidebar.expander(t["pdf_report"], expanded=False):
+    if st.button(t["pdf_download"], use_container_width=True):
+        try:
+            # ====== روش اول: استفاده از reportlab (پایدارتر) ======
+            try:
+                from reportlab.pdfgen import canvas
+                from reportlab.lib.pagesizes import A4
+                from reportlab.lib.units import mm
+                from reportlab.pdfbase import pdfmetrics
+                from reportlab.pdfbase.ttfonts import TTFont
+                import io
+                import datetime
+                
+                buffer = io.BytesIO()
+                c = canvas.Canvas(buffer, pagesize=A4)
+                width, height = A4
+                
+                # عنوان
+                c.setFont("Helvetica-Bold", 16)
+                c.drawString(50, height - 50, t["pdf_title"])
+                
+                # تاریخ
+                c.setFont("Helvetica", 10)
+                c.drawString(50, height - 70, f"{t['pdf_date']}: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}")
+                
+                # خط جداکننده
+                c.line(50, height - 80, width - 50, height - 80)
+                
+                # پارامترهای ورودی
+                c.setFont("Helvetica-Bold", 12)
+                c.drawString(50, height - 100, t["pdf_params"])
+                c.setFont("Helvetica", 10)
+                
+                y_pos = height - 120
+                params_text = [
+                    f"Q_portal: {Q_portal*1000*60:.2f} L/min",
+                    f"Q_artery: {Q_artery*1000*60:.2f} L/min",
+                    f"Kf0: {Kf0:.2f}",
+                    f"sigma: {sigma:.2f}",
+                    f"Pi0: {Pi0:.2f} mmHg",
+                    f"Jmax: {Jmax:.2f} ml/min",
+                    f"Km: {Km:.2f} mmHg",
+                    f"dPi: {dPi:.2f} mmHg",
+                    f"r0: {r0_um:.2f} μm",
+                    f"beta: {beta:.2f}",
+                    f"h: {h_cm:.2f} cm"
+                ]
+                for txt in params_text:
+                    c.drawString(60, y_pos, txt)
+                    y_pos -= 15
+                
+                # نتایج
+                y_pos -= 10
+                c.setFont("Helvetica-Bold", 12)
+                c.drawString(50, y_pos, t["pdf_results"])
+                c.setFont("Helvetica", 10)
+                y_pos -= 20
+                
+                results_text = [
+                    f"ΔP: {deltaP_analysis:.2f} mmHg",
+                    f"Jv (Filtration): {Jv:.2f} ml/min",
+                    f"Jlymph (Lymphatic): {Jlymph:.2f} ml/min",
+                    f"Jnet (Net): {Jnet:.2f} ml/min",
+                    f"Kf (Filtration Coefficient): {Kf:.3f}",
+                    f"Pi (Interstitial Pressure): {Pi:.2f} mmHg"
+                ]
+                for txt in results_text:
+                    c.drawString(60, y_pos, txt)
+                    y_pos -= 15
+                
+                # تفسیر بالینی
+                y_pos -= 10
+                c.setFont("Helvetica-Bold", 12)
+                c.drawString(50, y_pos, t["pdf_clinical"])
+                c.setFont("Helvetica", 10)
+                y_pos -= 20
+                
+                clinical = get_clinical_interpretation(deltaP_analysis, Jv, Jnet, lang=lang)
+                
+                # برای نمایش متن طولانی
+                def draw_text_with_wrap(c, text, x, y, max_width, font_size=10):
+                    c.setFont("Helvetica", font_size)
+                    words = text.split()
+                    lines = []
+                    current_line = ""
+                    for word in words:
+                        test_line = current_line + word + " "
+                        if c.stringWidth(test_line, "Helvetica", font_size) < max_width:
+                            current_line = test_line
+                        else:
+                            lines.append(current_line)
+                            current_line = word + " "
+                    if current_line:
+                        lines.append(current_line)
+                    
+                    for line in lines:
+                        c.drawString(x, y, line)
+                        y -= 15
+                    return y
+                
+                y_pos = draw_text_with_wrap(c, f"{t['pdf_status']}: {clinical['status']}", 60, y_pos, width - 120)
+                y_pos = draw_text_with_wrap(c, f"{t['pdf_description']}: {clinical['description']}", 60, y_pos, width - 120)
+                y_pos = draw_text_with_wrap(c, f"{t['pdf_ascites']}: {clinical['ascites_prediction']}", 60, y_pos, width - 120)
+                
+                c.save()
+                buffer.seek(0)
+                pdf_data = buffer.getvalue()
+                
+                st.download_button(
+                    label="📥 Download PDF",
+                    data=pdf_data,
+                    file_name=f"hepatic_report_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+                    mime="application/pdf",
+                    use_container_width=True
+                )
+                
+            except ImportError:
+                # ====== روش دوم: استفاده از fpdf (روش جایگزین) ======
+                try:
+                    from fpdf import FPDF
+                    import datetime
+                    
+                    pdf = FPDF()
+                    pdf.add_page()
+                    pdf.set_font("Arial", "B", 16)
+                    pdf.cell(200, 10, txt=t["pdf_title"], ln=True, align='C')
+                    pdf.set_font("Arial", size=10)
+                    pdf.cell(200, 10, txt=f"{t['pdf_date']}: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}", ln=True)
+                    pdf.ln(10)
+                    
+                    pdf.set_font("Arial", "B", 12)
+                    pdf.cell(200, 10, txt=t["pdf_params"], ln=True)
+                    pdf.set_font("Arial", size=10)
+                    params_text = [
+                        f"Q_portal: {Q_portal*1000*60:.2f} L/min",
+                        f"Q_artery: {Q_artery*1000*60:.2f} L/min",
+                        f"Kf0: {Kf0:.2f}",
+                        f"sigma: {sigma:.2f}",
+                        f"Pi0: {Pi0:.2f} mmHg",
+                        f"Jmax: {Jmax:.2f} ml/min",
+                        f"r0: {r0_um:.2f} μm",
+                        f"beta: {beta:.2f}"
+                    ]
+                    for txt in params_text:
+                        pdf.cell(200, 8, txt, ln=True)
+                    
+                    pdf.ln(10)
+                    pdf.set_font("Arial", "B", 12)
+                    pdf.cell(200, 10, txt=t["pdf_results"], ln=True)
+                    pdf.set_font("Arial", size=10)
+                    results_text = [
+                        f"ΔP: {deltaP_analysis:.2f} mmHg",
+                        f"Jv: {Jv:.2f} ml/min",
+                        f"Jlymph: {Jlymph:.2f} ml/min",
+                        f"Jnet: {Jnet:.2f} ml/min",
+                        f"Kf: {Kf:.3f}",
+                        f"Pi: {Pi:.2f} mmHg"
+                    ]
+                    for txt in results_text:
+                        pdf.cell(200, 8, txt, ln=True)
+                    
+                    pdf.ln(10)
+                    pdf.set_font("Arial", "B", 12)
+                    pdf.cell(200, 10, txt=t["pdf_clinical"], ln=True)
+                    pdf.set_font("Arial", size=10)
+                    clinical = get_clinical_interpretation(deltaP_analysis, Jv, Jnet, lang=lang)
+                    
+                    # برای متن طولانی از multi_cell استفاده می‌کنیم
+                    pdf.multi_cell(200, 8, f"{t['pdf_status']}: {clinical['status']}")
+                    pdf.multi_cell(200, 8, f"{t['pdf_description']}: {clinical['description']}")
+                    pdf.multi_cell(200, 8, f"{t['pdf_ascites']}: {clinical['ascites_prediction']}")
+                    
+                    pdf_output = pdf.output(dest='S').encode('latin-1')
+                    
+                    st.download_button(
+                        label="📥 Download PDF",
+                        data=pdf_output,
+                        file_name=f"hepatic_report_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+                        mime="application/pdf",
+                        use_container_width=True
+                    )
+                    
+                except ImportError:
+                    st.error("pleas run the codes below ")
+                    st.code("pip install reportlab\n# یا\npip install fpdf", language="bash")
+                    
+        except Exception as e:
+            st.error(f"❌ خطا در تولید PDF: {e}")
+            st.code(str(e), language="text")
+            st.info("💡 راه‌حل: کتابخانه‌های زیر را نصب کنید:")
+            st.code("pip install reportlab fpdf", language="bash")
 
 # ============================================================
 # 
@@ -2468,6 +2595,9 @@ with st.expander(t["upload_csv"], expanded=False):
 
 # ============================================================
 # ============================================================
+
+# ==========================================================
+# ============================================================
 try:
     import plotly.express as px
     
@@ -2476,40 +2606,131 @@ try:
         
         col1, col2 = st.columns(2)
         with col1:
-            param_3d_1 = st.selectbox(t["3d_param1"], ["Kf0", "sigma", "Pi0", "Jmax"], key="3d_p1")
+            param_3d_1 = st.selectbox(
+                t["3d_param1"], 
+                ["Kf₀ (Filtration)", "ΔP (Pressure)", "σ (Reflection)"], 
+                key="3d_p1"
+            )
         with col2:
-            param_3d_2 = st.selectbox(t["3d_param2"], ["Kf0", "sigma", "Pi0", "Jmax"], key="3d_p2", index=1)
+            param_3d_2 = st.selectbox(
+                t["3d_param2"], 
+                ["Kf₀ (Filtration)", "ΔP (Pressure)", "σ (Reflection)"], 
+                key="3d_p2", 
+                index=1
+            )
+        
+        output_3d = st.selectbox(
+            "Output:", 
+            ["Jv (Filtration)", "Jnet (Net)"], 
+            key="3d_out"
+        )
         
         if st.button(t["3d_plot"], key="btn_3d"):
-            x_vals_3d = np.linspace(1, 8, 20)
-            y_vals_3d = np.linspace(0.1, 0.4, 20)
-            X, Y = np.meshgrid(x_vals_3d, y_vals_3d)
-            Z = np.zeros_like(X)
-            
-            for i in range(X.shape[0]):
-                for j in range(X.shape[1]):
-                    Kf_tmp = calc_Kf_nonlinear(X[i,j], 12)
-                    Pi_tmp = calc_Pi_nonlinear(0.5, 12)
-                    Jv_tmp = calc_Jv(12, Kf_tmp, alpha, Y[i,j], Pi_tmp, 22, P_hep)
-                    Z[i,j] = Jv_tmp
-            
-            fig_3d = go.Figure(data=[
-                go.Surface(z=Z, x=x_vals_3d, y=y_vals_3d, colorscale='Viridis')
-            ])
-            fig_3d.update_layout(
-                title=t["3d_title_plot"].format(p1=param_3d_1, p2=param_3d_2),
-                scene=dict(
-                    xaxis_title=t["3d_x"].format(p1=param_3d_1),
-                    yaxis_title=t["3d_y"].format(p2=param_3d_2),
-                    zaxis_title=t["3d_z"]
-                ),
-                height=500
-            )
-            st.plotly_chart(fig_3d, use_container_width=True)
+            with st.spinner("⏳ Calculating..."):
+                
+                # محدوده‌های پارامترها
+                param_ranges = {
+                    "Kf₀ (Filtration)": (1.0, 8.0, 3.0),
+                    "ΔP (Pressure)": (2.0, 20.0, 12.0),
+                    "σ (Reflection)": (0.1, 0.4, 0.22)
+                }
+                
+                p1_min, p1_max, _ = param_ranges[param_3d_1]
+                p2_min, p2_max, _ = param_ranges[param_3d_2]
+                
+                n_points = 25
+                x_vals = np.linspace(p1_min, p1_max, n_points)
+                y_vals = np.linspace(p2_min, p2_max, n_points)
+                X, Y = np.meshgrid(x_vals, y_vals)
+                Z = np.zeros_like(X)
+                
+                progress_bar = st.progress(0)
+                total_points = n_points * n_points
+                counter = 0
+                
+                for i in range(n_points):
+                    for j in range(n_points):
+                        p1_val = X[i, j]
+                        p2_val = Y[i, j]
+                        
+                        # مقداردهی اولیه با پارامترهای فعلی
+                        temp_Kf0 = Kf0
+                        temp_dp = deltaP_analysis
+                        temp_sigma = sigma
+                        
+                        # تنظیم پارامتر اول
+                        if param_3d_1 == "Kf₀ (Filtration)":
+                            temp_Kf0 = p1_val
+                        elif param_3d_1 == "ΔP (Pressure)":
+                            temp_dp = p1_val
+                        elif param_3d_1 == "σ (Reflection)":
+                            temp_sigma = p1_val
+                        
+                        # تنظیم پارامتر دوم
+                        if param_3d_2 == "Kf₀ (Filtration)":
+                            temp_Kf0 = p2_val
+                        elif param_3d_2 == "ΔP (Pressure)":
+                            temp_dp = p2_val
+                        elif param_3d_2 == "σ (Reflection)":
+                            temp_sigma = p2_val
+                        
+                        # محاسبات
+                        Kf_temp = calc_Kf_nonlinear(temp_Kf0, temp_dp)
+                        Pi_temp = calc_Pi_nonlinear(Pi0, temp_dp)
+                        Jv_temp = calc_Jv(temp_dp, Kf_temp, alpha, temp_sigma, Pi_temp, dPi, P_hep)
+                        Jlymph_temp = calc_Jlymph(Jmax, Km, Pi_temp)
+                        Jnet_temp = calc_Jnet(Jv_temp, Jlymph_temp)
+                        
+                        if output_3d == "Jv (Filtration)":
+                            Z[i, j] = Jv_temp
+                        else:
+                            Z[i, j] = Jnet_temp
+                        
+                        counter += 1
+                        if counter % 50 == 0:
+                            progress_bar.progress(counter / total_points)
+                
+                progress_bar.empty()
+                
+                # رسم نمودار
+                fig_3d = go.Figure(data=[
+                    go.Surface(
+                        z=Z, 
+                        x=x_vals, 
+                        y=y_vals, 
+                        colorscale='Viridis',
+                        hovertemplate=f'{param_3d_1}: %{{x:.2f}}<br>{param_3d_2}: %{{y:.2f}}<br>{output_3d}: %{{z:.2f}}<extra></extra>'
+                    )
+                ])
+                
+                fig_3d.update_layout(
+                    title=f"<b>Effect of {param_3d_1} & {param_3d_2} on {output_3d}</b>",
+                    scene=dict(
+                        xaxis_title=param_3d_1,
+                        yaxis_title=param_3d_2,
+                        zaxis_title=output_3d,
+                        camera=dict(eye=dict(x=1.5, y=1.5, z=1.2))
+                    ),
+                    height=600,
+                    template='plotly_white'
+                )
+                
+                st.plotly_chart(fig_3d, use_container_width=True)
+                
+                # نمایش مقادیر حداقلی و حداکثری
+                col1, col2 = st.columns(2)
+                with col1:
+                    min_idx = np.unravel_index(np.argmin(Z), Z.shape)
+                    st.info(f"🟢 **Min {output_3d}**: {np.min(Z):.2f} at ({param_3d_1}={x_vals[min_idx[1]]:.2f}, {param_3d_2}={y_vals[min_idx[0]]:.2f})")
+                with col2:
+                    max_idx = np.unravel_index(np.argmax(Z), Z.shape)
+                    st.warning(f"🔴 **Max {output_3d}**: {np.max(Z):.2f} at ({param_3d_1}={x_vals[max_idx[1]]:.2f}, {param_3d_2}={y_vals[max_idx[0]]:.2f})")
+                
+                st.caption(f"📌 As {param_3d_1} and {param_3d_2} increase, {output_3d} changes nonlinearly.")
+                
 except ImportError:
     pass
-
-# ===========================================================
+===============================================
 # ============================================================
 if 'validation_done' not in st.session_state:
     if Q_portal <= 0:
