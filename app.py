@@ -2461,11 +2461,12 @@ with st.sidebar.expander(t["pdf_report"], expanded=False):
                     from fpdf import FPDF
                     import datetime
 
+                    # دانلود فونت DejaVuSans.ttf و قرار دادن در کنار app.py
                     class UTF8PDF(FPDF):
                         def __init__(self):
                             super().__init__()
-        
-                            self.core_fonts_encoding = 'utf-8'
+                            self.add_font('DejaVu', '', 'DejaVuSans.ttf', uni=True)
+                            self.set_font('DejaVu', '', 10)
 
                     pdf = UTF8PDF()
                     
