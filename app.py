@@ -2339,206 +2339,118 @@ with st.sidebar:
         st.success(t["cache_cleared"])
         
 # ============================================================
+# ============================================================
+# ============================================================
 with st.sidebar.expander(t["pdf_report"], expanded=False):
     if st.button(t["pdf_download"], use_container_width=True):
         try:
-            # ====== روش اول: استفاده از reportlab (پایدارتر) ======
-            try:
-                from reportlab.pdfgen import canvas
-                from reportlab.lib.pagesizes import A4
-                from reportlab.lib.units import mm
-                from reportlab.pdfbase import pdfmetrics
-                from reportlab.pdfbase.ttfonts import TTFont
-                import io
-                import datetime
-                
-                buffer = io.BytesIO()
-                c = canvas.Canvas(buffer, pagesize=A4)
-                width, height = A4
-                
-                # عنوان
-                c.setFont("Helvetica-Bold", 16)
-                c.drawString(50, height - 50, t["pdf_title"])
-                
-                # تاریخ
-                c.setFont("Helvetica", 10)
-                c.drawString(50, height - 70, f"{t['pdf_date']}: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}")
-                
-                # خط جداکننده
-                c.line(50, height - 80, width - 50, height - 80)
-                
-                # پارامترهای ورودی
-                c.setFont("Helvetica-Bold", 12)
-                c.drawString(50, height - 100, t["pdf_params"])
-                c.setFont("Helvetica", 10)
-                
-                y_pos = height - 120
-                params_text = [
-                    f"Q_portal: {Q_portal*1000*60:.2f} L/min",
-                    f"Q_artery: {Q_artery*1000*60:.2f} L/min",
-                    f"Kf0: {Kf0:.2f}",
-                    f"sigma: {sigma:.2f}",
-                    f"Pi0: {Pi0:.2f} mmHg",
-                    f"Jmax: {Jmax:.2f} ml/min",
-                    f"Km: {Km:.2f} mmHg",
-                    f"dPi: {dPi:.2f} mmHg",
-                    f"r0: {r0_um:.2f} μm",
-                    f"beta: {beta:.2f}",
-                    f"h: {h_cm:.2f} cm"
-                ]
-                for txt in params_text:
-                    c.drawString(60, y_pos, txt)
-                    y_pos -= 15
-                
-                # نتایج
-                y_pos -= 10
-                c.setFont("Helvetica-Bold", 12)
-                c.drawString(50, y_pos, t["pdf_results"])
-                c.setFont("Helvetica", 10)
-                y_pos -= 20
-                
-                results_text = [
-                    f"ΔP: {deltaP_analysis:.2f} mmHg",
-                    f"Jv (Filtration): {Jv:.2f} ml/min",
-                    f"Jlymph (Lymphatic): {Jlymph:.2f} ml/min",
-                    f"Jnet (Net): {Jnet:.2f} ml/min",
-                    f"Kf (Filtration Coefficient): {Kf:.3f}",
-                    f"Pi (Interstitial Pressure): {Pi:.2f} mmHg"
-                ]
-                for txt in results_text:
-                    c.drawString(60, y_pos, txt)
-                    y_pos -= 15
-                
-                # تفسیر بالینی
-                y_pos -= 10
-                c.setFont("Helvetica-Bold", 12)
-                c.drawString(50, y_pos, t["pdf_clinical"])
-                c.setFont("Helvetica", 10)
-                y_pos -= 20
-                
-                clinical = get_clinical_interpretation(deltaP_analysis, Jv, Jnet, lang=lang)
-                
-                # برای نمایش متن طولانی
-                def draw_text_with_wrap(c, text, x, y, max_width, font_size=10):
-                    c.setFont("Helvetica", font_size)
-                    words = text.split()
-                    lines = []
-                    current_line = ""
-                    for word in words:
-                        test_line = current_line + word + " "
-                        if c.stringWidth(test_line, "Helvetica", font_size) < max_width:
-                            current_line = test_line
-                        else:
-                            lines.append(current_line)
-                            current_line = word + " "
-                    if current_line:
-                        lines.append(current_line)
-                    
-                    for line in lines:
-                        c.drawString(x, y, line)
-                        y -= 15
-                    return y
-                
-                y_pos = draw_text_with_wrap(c, f"{t['pdf_status']}: {clinical['status']}", 60, y_pos, width - 120)
-                y_pos = draw_text_with_wrap(c, f"{t['pdf_description']}: {clinical['description']}", 60, y_pos, width - 120)
-                y_pos = draw_text_with_wrap(c, f"{t['pdf_ascites']}: {clinical['ascites_prediction']}", 60, y_pos, width - 120)
-                
-                c.save()
-                buffer.seek(0)
-                pdf_data = buffer.getvalue()
-                
-                st.download_button(
-                    label="📥 Download PDF",
-                    data=pdf_data,
-                    file_name=f"hepatic_report_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
-                    mime="application/pdf",
-                    use_container_width=True
-                )
-                
-            except ImportError:
-                # ====== روش دوم: استفاده از fpdf (روش جایگزین) ======
-                try:
-                    from fpdf import FPDF
-                    import datetime
-
-                    # دانلود فونت DejaVuSans.ttf و قرار دادن در کنار app.py
-                    class UTF8PDF(FPDF):
-                        def __init__(self):
-                            super().__init__()
-                            self.add_font('DejaVu', '', 'DejaVuSans.ttf', uni=True)
-                            self.set_font('DejaVu', '', 10)
-
-                    pdf = UTF8PDF()
-                    
-                   
-                    pdf.add_page()
-                    pdf.set_font("Arial", "B", 16)
-                    pdf.cell(200, 10, txt=t["pdf_title"], ln=True, align='C')
-                    pdf.set_font("Arial", size=10)
-                    pdf.cell(200, 10, txt=f"{t['pdf_date']}: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}", ln=True)
-                    pdf.ln(10)
-                    
-                    pdf.set_font("Arial", "B", 12)
-                    pdf.cell(200, 10, txt=t["pdf_params"], ln=True)
-                    pdf.set_font("Arial", size=10)
-                    params_text = [
-                        f"Q_portal: {Q_portal*1000*60:.2f} L/min",
-                        f"Q_artery: {Q_artery*1000*60:.2f} L/min",
-                        f"Kf0: {Kf0:.2f}",
-                        f"sigma: {sigma:.2f}",
-                        f"Pi0: {Pi0:.2f} mmHg",
-                        f"Jmax: {Jmax:.2f} ml/min",
-                        f"r0: {r0_um:.2f} μm",
-                        f"beta: {beta:.2f}"
-                    ]
-                    for txt in params_text:
-                        pdf.cell(200, 8, txt, ln=True)
-                    
-                    pdf.ln(10)
-                    pdf.set_font("Arial", "B", 12)
-                    pdf.cell(200, 10, txt=t["pdf_results"], ln=True)
-                    pdf.set_font("Arial", size=10)
-                    results_text = [
-                        f"ΔP: {deltaP_analysis:.2f} mmHg",
-                        f"Jv: {Jv:.2f} ml/min",
-                        f"Jlymph: {Jlymph:.2f} ml/min",
-                        f"Jnet: {Jnet:.2f} ml/min",
-                        f"Kf: {Kf:.3f}",
-                        f"Pi: {Pi:.2f} mmHg"
-                    ]
-                    for txt in results_text:
-                        pdf.cell(200, 8, txt, ln=True)
-                    
-                    pdf.ln(10)
-                    pdf.set_font("Arial", "B", 12)
-                    pdf.cell(200, 10, txt=t["pdf_clinical"], ln=True)
-                    pdf.set_font("Arial", size=10)
-                    clinical = get_clinical_interpretation(deltaP_analysis, Jv, Jnet, lang=lang)
-                    
-                    # برای متن طولانی از multi_cell استفاده می‌کنیم
-                    pdf.multi_cell(200, 8, f"{t['pdf_status']}: {clinical['status']}")
-                    pdf.multi_cell(200, 8, f"{t['pdf_description']}: {clinical['description']}")
-                    pdf.multi_cell(200, 8, f"{t['pdf_ascites']}: {clinical['ascites_prediction']}")
-                    
-                    pdf_output = pdf.output(dest='S').encode('latin-1')
-                    
-                    st.download_button(
-                        label="📥 Download PDF",
-                        data=pdf_output,
-                        file_name=f"hepatic_report_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
-                        mime="application/pdf",
-                        use_container_width=True
-                    )
-                    
-                except ImportError:
-                    st.error("pleas run the codes below ")
-                    st.code("pip install reportlab\n# یا\npip install fpdf", language="bash")
-                    
+            # ====== تابع پاک‌کننده‌ی کاراکترهای یونانی ======
+            def clean_text(text):
+                replacements = {
+                    'μ': 'u',
+                    'α': 'alpha',
+                    'β': 'beta',
+                    'π': 'pi',
+                    'σ': 'sigma',
+                    'τ': 'tau',
+                    '₀': '_0',
+                    '∞': '_inf',
+                    '·': '.',
+                    '×': 'x',
+                    '²': '^2',
+                    '³': '^3',
+                    'Δ': 'Delta',
+                    'γ': 'gamma',
+                    'ω': 'omega',
+                    '−': '-',
+                    '→': '->'
+                }
+                for old, new in replacements.items():
+                    text = text.replace(old, new)
+                return text
+            
+            from fpdf import FPDF
+            import datetime
+            
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.set_font('Arial', '', 10)
+            
+            # عنوان
+            pdf.set_font("Arial", "B", 16)
+            pdf.cell(200, 10, txt=clean_text(t["pdf_title"]), ln=True, align='C')
+            
+            # تاریخ
+            pdf.set_font("Arial", "", 10)
+            pdf.cell(200, 10, txt=f"{clean_text(t['pdf_date'])}: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}", ln=True)
+            pdf.ln(10)
+            
+            # ====== پارامترهای ورودی ======
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(200, 10, txt=clean_text(t["pdf_params"]), ln=True)
+            pdf.set_font("Arial", "", 10)
+            
+            params_text = [
+                f"Q_portal: {Q_portal*1000*60:.2f} L/min",
+                f"Q_artery: {Q_artery*1000*60:.2f} L/min",
+                f"Kf0: {Kf0:.2f}",
+                f"sigma: {sigma:.2f}",
+                f"Pi0: {Pi0:.2f} mmHg",
+                f"Jmax: {Jmax:.2f} ml/min",
+                f"Km: {Km:.2f} mmHg",
+                f"dPi: {dPi:.2f} mmHg",
+                f"r0: {r0_um:.2f} um",
+                f"beta: {beta:.2f}",
+                f"h: {h_cm:.2f} cm"
+            ]
+            for txt in params_text:
+                pdf.cell(200, 8, txt=clean_text(txt), ln=True)
+            
+            pdf.ln(10)
+            
+            # ====== نتایج ======
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(200, 10, txt=clean_text(t["pdf_results"]), ln=True)
+            pdf.set_font("Arial", "", 10)
+            
+            results_text = [
+                f"DeltaP: {deltaP_analysis:.2f} mmHg",
+                f"Jv (Filtration): {Jv:.2f} ml/min",
+                f"Jlymph (Lymphatic): {Jlymph:.2f} ml/min",
+                f"Jnet (Net): {Jnet:.2f} ml/min",
+                f"Kf (Filtration Coefficient): {Kf:.3f}",
+                f"Pi (Interstitial Pressure): {Pi:.2f} mmHg"
+            ]
+            for txt in results_text:
+                pdf.cell(200, 8, txt=clean_text(txt), ln=True)
+            
+            pdf.ln(10)
+            
+            # ====== تفسیر بالینی ======
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(200, 10, txt=clean_text(t["pdf_clinical"]), ln=True)
+            pdf.set_font("Arial", "", 10)
+            
+            clinical = get_clinical_interpretation(deltaP_analysis, Jv, Jnet, lang=lang)
+            
+            pdf.multi_cell(200, 8, txt=clean_text(f"{t['pdf_status']}: {clinical['status']}"))
+            pdf.multi_cell(200, 8, txt=clean_text(f"{t['pdf_description']}: {clinical['description']}"))
+            pdf.multi_cell(200, 8, txt=clean_text(f"{t['pdf_ascites']}: {clinical['ascites_prediction']}"))
+            
+            # ====== خروجی PDF ======
+            pdf_output = pdf.output(dest='S').encode('latin-1')
+            
+            st.download_button(
+                label="📥 Download PDF",
+                data=pdf_output,
+                file_name=f"hepatic_report_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
+            
         except Exception as e:
             st.error(f"❌ خطا در تولید PDF: {e}")
             st.code(str(e), language="text")
-            st.info("💡 راه‌حل: کتابخانه‌های زیر را نصب کنید:")
-            st.code("pip install reportlab fpdf", language="bash")
 
 # ============================================================
 # 
