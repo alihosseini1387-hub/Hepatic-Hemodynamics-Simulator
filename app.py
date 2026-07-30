@@ -2283,17 +2283,6 @@ with st.expander(t["sensitivity_title"], expanded=False):
     
     
 #===========================================================================================================
-with st.expander(t["comparison_title"], expanded=False):
-    st.markdown(f"""
-    | {t["comparison_col1"]} | {t["comparison_col2"]} | {t["comparison_col3"]} | {t["comparison_col4"]} | {t["comparison_col5"]} |
-    |---|---|---|---|---|
-    | {t["comp_bernoulli"]} | ❌ | ❌ | ❌ | ✅ |
-    | {t["comp_viscous"]} | ❌ | ❌ | ❌ | ✅ |
-    | {t["comp_kf"]} | ❌ | ❌  | ❌ | ✅ |
-    | {t["comp_pi"]} | ❌ | ✅ | ✅ | ✅ |
-    | {t["comp_negative"]} | ❌ | ✅ | ❌ | ✅ |
-    | {t["comp_casson"]} | ❌ | ❌ | ❌ | ✅ |
-    | {t["comp_lymph"]} | ❌ | ❌ | ❌ | ✅ |
 
 
 # ============================================================
