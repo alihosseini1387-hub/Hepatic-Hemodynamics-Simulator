@@ -2460,8 +2460,17 @@ with st.sidebar.expander(t["pdf_report"], expanded=False):
                 try:
                     from fpdf import FPDF
                     import datetime
+
+                    class UTF8PDF(FPDF):
+                    def __init__(self):
+                    super().__init__()
+                    # برای فارسی/یونانی، باید فونت رو به‌صورت جداگانه اضافه کنی
+                    # ولی برای حل این خطا، این کار رو بکن:
+                    self.core_fonts_encoding = 'utf-8'
+
+                    pdf = UTF8PDF()
                     
-                    pdf = FPDF()
+                   
                     pdf.add_page()
                     pdf.set_font("Arial", "B", 16)
                     pdf.cell(200, 10, txt=t["pdf_title"], ln=True, align='C')
@@ -2756,5 +2765,5 @@ if 'preset_values' in st.session_state:
 # ======================== فوتر ========================
 st.divider()
 st.caption(t["footer"])
-st.caption("Ver:2.1.4 ")
+st.caption("Ver:2.1.8")
 st.caption("Ali Hosseini; email: ali.hosseini1387@icloud.com")
