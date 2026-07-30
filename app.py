@@ -84,7 +84,53 @@ TEXTS = {
     "app_title": "🩸 Hepatic Filtration Simulator",
     "app_subtitle": "Based on the paper *Simulation of hepatic blood flow based on fluid mechanics principles*, Mandegar Alborz High School",
     
-    
+        "preset_title": "📋 Clinical Scenarios",
+        "preset_custom": "🔘 Custom (Manual)",
+        "preset_normal": "🟢 Normal (Healthy)",
+        "preset_mild": "🟡 Mild Portal Hypertension",
+        "preset_cirrhosis": "🔴 Cirrhosis with Ascites",
+        "preset_refractory": "🔴🔴 Refractory Ascites",
+        "preset_apply": "✅ Apply Scenario",
+        "preset_loaded": "✅ Scenario '{name}' loaded. Click 'Apply Scenario' to activate.",
+        
+        "clear_cache": "🗑️ Clear Cache",
+        "cache_cleared": "✅ Cache cleared successfully!",
+        
+        "pdf_report": "📄 PDF Report",
+        "pdf_download": "📥 Download Full Report",
+        "pdf_title": "Hepatic Hemodynamics Report",
+        "pdf_date": "Date",
+        "pdf_params": "1. Input Parameters",
+        "pdf_results": "2. Results",
+        "pdf_clinical": "3. Clinical Interpretation",
+        "pdf_status": "Status",
+        "pdf_description": "Description",
+        "pdf_ascites": "Ascites Prediction",
+        "pdf_install_warning": "⚠️ To download PDF, install: `pip install fpdf`",
+        
+        "upload_csv": "📤 Upload Patient Data (CSV)",
+        "upload_help": "Select CSV file with columns: ΔP, Kf0, sigma, Pi0, Jmax, Km, dPi",
+        "upload_run": "🚀 Run Model on Data",
+        "upload_status": "⚠️ Ascites Risk",
+        "upload_compensated": "✅ Compensated",
+        "upload_download": "📥 Download Results (CSV)",
+        "upload_error": "❌ Error reading file: {e}",
+        
+        "3d_title": "📊 Interactive 3D Plot",
+        "3d_info": "ℹ️ Select two parameters for 3D visualization:",
+        "3d_param1": "First Parameter (X)",
+        "3d_param2": "Second Parameter (Y)",
+        "3d_plot": "🎲 Draw 3D Plot",
+        "3d_title_plot": "Simultaneous Effect of {p1} and {p2} on Jv",
+        "3d_x": "{p1}",
+        "3d_y": "{p2}",
+        "3d_z": "Jv (ml/min)",
+        
+        "reset_title": "🔄 Reset All Settings",
+        "reset_confirm": "⚠️ Are you sure you want to reset all settings?",
+        
+        "validation_warning_flow": "⚠️ Portal vein flow must be positive!",
+        "validation_warning_area": "⚠️ Cross-sectional area must be greater than zero!",
     "settings": "⚙️ Settings",
     "mode_label": "Mode",
     "mode_auto": "🔄 Auto",
@@ -340,7 +386,53 @@ TEXTS = {
     "km": "Km (mmHg)",
     "max_dp": "حداکثر ΔP (mmHg)",
     "manual_alpha": "α (دستی)",
-    
+          "preset_title": "📋 سناریوهای بالینی",
+        "preset_custom": "🔘 سفارشی (دستی)",
+        "preset_normal": "🟢 سالم (طبیعی)",
+        "preset_mild": "🟡 پرفشاری پورتال خفیف",
+        "preset_cirrhosis": "🔴 سیروز با آسیت",
+        "preset_refractory": "🔴🔴 آسیت مقاوم به درمان",
+        "preset_apply": "✅ اعمال سناریو",
+        "preset_loaded": "✅ سناریوی '{name}' بارگذاری شد. برای اعمال، روی 'اعمال سناریو' کلیک کنید.",
+        
+        "clear_cache": "🗑️ پاک‌سازی کش",
+        "cache_cleared": "✅ کش با موفقیت پاک شد!",
+        
+        "pdf_report": "📄 گزارش PDF",
+        "pdf_download": "📥 دانلود گزارش کامل",
+        "pdf_title": "گزارش همودینامیک کبد",
+        "pdf_date": "تاریخ",
+        "pdf_params": "۱. پارامترهای ورودی",
+        "pdf_results": "۲. نتایج",
+        "pdf_clinical": "۳. تفسیر بالینی",
+        "pdf_status": "وضعیت",
+        "pdf_description": "توضیحات",
+        "pdf_ascites": "پیش‌بینی آسیت",
+        "pdf_install_warning": "⚠️ برای دانلود PDF، کتابخانه‌ی fpdf را نصب کنید: `pip install fpdf`",
+        
+        "upload_csv": "📤 بارگذاری داده‌های بیمار (CSV)",
+        "upload_help": "انتخاب فایل CSV با ستون‌های: ΔP, Kf0, sigma, Pi0, Jmax, Km, dPi",
+        "upload_run": "🚀 اجرای مدل روی داده‌ها",
+        "upload_status": "⚠️ خطر آسیت",
+        "upload_compensated": "✅ جبران‌شده",
+        "upload_download": "📥 دانلود نتایج (CSV)",
+        "upload_error": "❌ خطا در خواندن فایل: {e}",
+        
+        "3d_title": "📊 نمودار سه‌بعدی تعاملی",
+        "3d_info": "ℹ️ برای رسم نمودار سه‌بعدی، حداقل دو پارامتر را انتخاب کنید:",
+        "3d_param1": "پارامتر اول (X)",
+        "3d_param2": "پارامتر دوم (Y)",
+        "3d_plot": "🎲 رسم نمودار ۳D",
+        "3d_title_plot": "تأثیر هم‌زمان {p1} و {p2} بر Jv",
+        "3d_x": "{p1}",
+        "3d_y": "{p2}",
+        "3d_z": "Jv (ml/min)",
+        
+        "reset_title": "🔄 بازنشانی همه‌ی تنظیمات",
+        "reset_confirm": "⚠️ آیا مطمئن هستید که می‌خواهید همه‌ی تنظیمات را بازنشانی کنید؟",
+        
+        "validation_warning_flow": "⚠️ دبی ورید باب باید مثبت باشد!",
+        "validation_warning_area": "⚠️ سطح مقطع باید بزرگتر از صفر باشد!",
     
     "alpha": "α",
     "shear_rate": "نرخ برش",
@@ -2197,17 +2289,268 @@ with st.expander(t["comparison_title"], expanded=False):
     |---|---|---|---|---|
     | {t["comp_bernoulli"]} | ❌ | ❌ | ❌ | ✅ |
     | {t["comp_viscous"]} | ❌ | ❌ | ❌ | ✅ |
-    | {t["comp_kf"]} | ❌ | ❌ (تا حدی) | ❌ (تا حدی) | ✅ |
+    | {t["comp_kf"]} | ❌ | ❌  | ❌ | ✅ |
     | {t["comp_pi"]} | ❌ | ✅ | ✅ | ✅ |
     | {t["comp_negative"]} | ❌ | ✅ | ❌ | ✅ |
     | {t["comp_casson"]} | ❌ | ❌ | ❌ | ✅ |
     | {t["comp_lymph"]} | ❌ | ❌ | ❌ | ✅ |
 
-    {t["innovation_title"]} {t["innovation_text"]}
-    """)
+
+# ============================================================
+
+#  (Preset Scenarios)
+with st.sidebar.expander(t["preset_title"], expanded=False):
+    preset = st.selectbox(
+        t["preset_title"],
+        [t["preset_custom"], 
+         t["preset_normal"], 
+         t["preset_mild"],
+         t["preset_cirrhosis"],
+         t["preset_refractory"]]
+    )
+    
+    if preset != t["preset_custom"]:
+        if st.button(t["preset_apply"], use_container_width=True):
+            # مقادیر پیش‌فرض برای هر سناریو
+            scenarios = {
+                t["preset_normal"]: {
+                    "Qp": 1.1, "Qa": 0.35, "Kf0": 3.0, "sigma": 0.22,
+                    "Pi0": 0.5, "Jmax": 40, "Km": 0.74, "dPi": 22,
+                    "r0": 4.0, "beta": 0.10, "h": 4.0
+                },
+                t["preset_mild"]: {
+                    "Qp": 1.5, "Qa": 0.45, "Kf0": 4.5, "sigma": 0.25,
+                    "Pi0": 0.7, "Jmax": 40, "Km": 0.74, "dPi": 20,
+                    "r0": 3.8, "beta": 0.20, "h": 4.0
+                },
+                t["preset_cirrhosis"]: {
+                    "Qp": 2.0, "Qa": 0.60, "Kf0": 6.0, "sigma": 0.28,
+                    "Pi0": 1.0, "Jmax": 35, "Km": 0.74, "dPi": 18,
+                    "r0": 3.5, "beta": 0.35, "h": 4.0
+                },
+                t["preset_refractory"]: {
+                    "Qp": 2.5, "Qa": 0.75, "Kf0": 8.0, "sigma": 0.32,
+                    "Pi0": 1.5, "Jmax": 30, "Km": 0.74, "dPi": 16,
+                    "r0": 3.0, "beta": 0.50, "h": 4.0
+                }
+            }
+            
+            sc = scenarios[preset]
+            st.session_state['preset_values'] = sc
+            st.success(t["preset_loaded"].format(name=preset))
+            st.rerun()
+
+# ============================================================
+# 2️
+# ============================================================
+with st.sidebar:
+    st.divider()
+    if st.button(t["clear_cache"], use_container_width=True):
+        st.cache_data.clear()
+        st.success(t["cache_cleared"])
+        st.rerun()
+
+# ============================================================
+# 3️
+# ============================================================
+try:
+    from fpdf import FPDF
+    import datetime
+    import io
+    
+    with st.sidebar.expander(t["pdf_report"], expanded=False):
+        if st.button(t["pdf_download"], use_container_width=True):
+            pdf = FPDF()
+            pdf.add_page()
+            pdf.set_font("Arial", "B", 16)
+            pdf.cell(200, 10, txt=t["pdf_title"], ln=True, align='C')
+            pdf.set_font("Arial", size=10)
+            pdf.cell(200, 10, txt=f"{t['pdf_date']}: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}", ln=True)
+            pdf.ln(10)
+            
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(200, 10, txt=t["pdf_params"], ln=True)
+            pdf.set_font("Arial", size=10)
+            params_text = [
+                f"Q_portal: {Q_portal*1000*60:.2f} L/min",
+                f"Q_artery: {Q_artery*1000*60:.2f} L/min",
+                f"Kf0: {Kf0:.2f}",
+                f"sigma: {sigma:.2f}",
+                f"Pi0: {Pi0:.2f} mmHg",
+                f"Jmax: {Jmax:.2f} ml/min",
+                f"r0: {r0_um:.2f} μm",
+                f"beta: {beta:.2f}"
+            ]
+            for txt in params_text:
+                pdf.cell(200, 8, txt, ln=True)
+            
+            pdf.ln(10)
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(200, 10, txt=t["pdf_results"], ln=True)
+            pdf.set_font("Arial", size=10)
+            results_text = [
+                f"ΔP: {deltaP_analysis:.2f} mmHg",
+                f"Jv: {Jv:.2f} ml/min",
+                f"Jlymph: {Jlymph:.2f} ml/min",
+                f"Jnet: {Jnet:.2f} ml/min",
+                f"Kf: {Kf:.3f}",
+                f"Pi: {Pi:.2f} mmHg"
+            ]
+            for txt in results_text:
+                pdf.cell(200, 8, txt, ln=True)
+            
+            pdf.ln(10)
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(200, 10, txt=t["pdf_clinical"], ln=True)
+            pdf.set_font("Arial", size=10)
+            clinical = get_clinical_interpretation(deltaP_analysis, Jv, Jnet, lang=lang)
+            pdf.multi_cell(200, 8, f"{t['pdf_status']}: {clinical['status']}")
+            pdf.multi_cell(200, 8, f"{t['pdf_description']}: {clinical['description']}")
+            pdf.multi_cell(200, 8, f"{t['pdf_ascites']}: {clinical['ascites_prediction']}")
+            
+            pdf_output = pdf.output(dest='S').encode('latin-1')
+            
+            st.download_button(
+                label="📥 PDF",
+                data=pdf_output,
+                file_name=f"hepatic_report_{datetime.datetime.now().strftime('%Y%m%d_%H%M')}.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
+except ImportError:
+    with st.sidebar:
+        st.warning(t["pdf_install_warning"])
+
+# ============================================================
+# 
+# ============================================================
+with st.expander(t["upload_csv"], expanded=False):
+    st.info(t["upload_help"])
+    uploaded_file = st.file_uploader(t["upload_csv"], type=['csv'])
+    
+    if uploaded_file is not None:
+        try:
+            df_patients = pd.read_csv(uploaded_file)
+            st.dataframe(df_patients.head(5))
+            
+            if st.button(t["upload_run"], use_container_width=True):
+                results = []
+                progress_bar = st.progress(0)
+                
+                for idx, row in df_patients.iterrows():
+                    dp_patient = row.get('ΔP', 12.0)
+                    kf_patient = row.get('Kf0', Kf0)
+                    sigma_patient = row.get('sigma', sigma)
+                    pi_patient = row.get('Pi0', Pi0)
+                    jmax_patient = row.get('Jmax', Jmax)
+                    km_patient = row.get('Km', Km)
+                    dpi_patient = row.get('dPi', dPi)
+                    
+                    Kf_p = calc_Kf_nonlinear(kf_patient, dp_patient)
+                    Pi_p = calc_Pi_nonlinear(pi_patient, dp_patient)
+                    Jv_p = calc_Jv(dp_patient, Kf_p, alpha, sigma_patient, Pi_p, dpi_patient, P_hep)
+                    Jlymph_p = calc_Jlymph(jmax_patient, km_patient, Pi_p)
+                    Jnet_p = calc_Jnet(Jv_p, Jlymph_p)
+                    
+                    results.append({
+                        'ΔP': round(dp_patient, 2),
+                        'Jv': round(Jv_p, 2),
+                        'Jnet': round(Jnet_p, 2),
+                        'Status': t["upload_status"] if Jnet_p > 0 else t["upload_compensated"]
+                    })
+                    
+                    progress_bar.progress((idx + 1) / len(df_patients))
+                
+                progress_bar.empty()
+                df_results = pd.DataFrame(results)
+                st.dataframe(df_results, use_container_width=True, hide_index=True)
+                
+                csv_results = df_results.to_csv(index=False)
+                st.download_button(
+                    label=t["upload_download"],
+                    data=csv_results,
+                    file_name="patient_results.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+                
+        except Exception as e:
+            st.error(t["upload_error"].format(e=e))
+
+# ============================================================
+# ============================================================
+try:
+    import plotly.express as px
+    
+    with st.expander(t["3d_title"], expanded=False):
+        st.info(t["3d_info"])
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            param_3d_1 = st.selectbox(t["3d_param1"], ["Kf0", "sigma", "Pi0", "Jmax"], key="3d_p1")
+        with col2:
+            param_3d_2 = st.selectbox(t["3d_param2"], ["Kf0", "sigma", "Pi0", "Jmax"], key="3d_p2", index=1)
+        
+        if st.button(t["3d_plot"], key="btn_3d"):
+            x_vals_3d = np.linspace(1, 8, 20)
+            y_vals_3d = np.linspace(0.1, 0.4, 20)
+            X, Y = np.meshgrid(x_vals_3d, y_vals_3d)
+            Z = np.zeros_like(X)
+            
+            for i in range(X.shape[0]):
+                for j in range(X.shape[1]):
+                    Kf_tmp = calc_Kf_nonlinear(X[i,j], 12)
+                    Pi_tmp = calc_Pi_nonlinear(0.5, 12)
+                    Jv_tmp = calc_Jv(12, Kf_tmp, alpha, Y[i,j], Pi_tmp, 22, P_hep)
+                    Z[i,j] = Jv_tmp
+            
+            fig_3d = go.Figure(data=[
+                go.Surface(z=Z, x=x_vals_3d, y=y_vals_3d, colorscale='Viridis')
+            ])
+            fig_3d.update_layout(
+                title=t["3d_title_plot"].format(p1=param_3d_1, p2=param_3d_2),
+                scene=dict(
+                    xaxis_title=t["3d_x"].format(p1=param_3d_1),
+                    yaxis_title=t["3d_y"].format(p2=param_3d_2),
+                    zaxis_title=t["3d_z"]
+                ),
+                height=500
+            )
+            st.plotly_chart(fig_3d, use_container_width=True)
+except ImportError:
+    pass
+
+# ===========================================================
+# ============================================================
+if 'validation_done' not in st.session_state:
+    if Q_portal <= 0:
+        st.warning(t["validation_warning_flow"])
+    if A_portal <= 0 or A_hepatic <= 0:
+        st.warning(t["validation_warning_area"])
+    st.session_state.validation_done = True
+
+# ===========================================================
+# ============================================================
+with st.sidebar:
+    st.divider()
+    if st.button(t["reset_title"], use_container_width=True):
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.rerun()
+
+# ============================================================
+# 8️
+# ============================================================
+if 'preset_values' in st.session_state:
+    sc = st.session_state.preset_values
+    st.info(t["preset_loaded"].format(name=preset))
+    # 
+# ============================================================
+
+
 
 # ======================== فوتر ========================
 st.divider()
 st.caption(t["footer"])
-st.caption("Ver:2.0.4 ")
+st.caption("Ver:2.1.1 ")
 st.caption("Ali Hosseini; email: ali.hosseini1387@icloud.com")
