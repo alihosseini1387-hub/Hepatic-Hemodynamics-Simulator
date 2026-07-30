@@ -2462,11 +2462,10 @@ with st.sidebar.expander(t["pdf_report"], expanded=False):
                     import datetime
 
                     class UTF8PDF(FPDF):
-                    def __init__(self):
-                    super().__init__()
-                    # برای فارسی/یونانی، باید فونت رو به‌صورت جداگانه اضافه کنی
-                    # ولی برای حل این خطا، این کار رو بکن:
-                    self.core_fonts_encoding = 'utf-8'
+                        def __init__(self):
+                            super().__init__()
+        
+                            self.core_fonts_encoding = 'utf-8'
 
                     pdf = UTF8PDF()
                     
