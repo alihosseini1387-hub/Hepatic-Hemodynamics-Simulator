@@ -2337,13 +2337,7 @@ with st.sidebar:
     if st.button(t["clear_cache"], use_container_width=True):
         st.cache_data.clear()
         st.success(t["cache_cleared"])
-        st.rerun()
-
-# ============================================================
-# 3️
-# ============================================================
-# ============================================================
-# 3️⃣ گزارش PDF (نسخه‌ی پایدار با کتابخانه‌های مختلف)
+        
 # ============================================================
 with st.sidebar.expander(t["pdf_report"], expanded=False):
     if st.button(t["pdf_download"], use_container_width=True):
@@ -2712,7 +2706,7 @@ try:
                         camera=dict(eye=dict(x=1.5, y=1.5, z=1.2))
                     ),
                     height=600,
-                    template='plotly_white'
+                    template='plotly_black'
                 )
                 
                 st.plotly_chart(fig_3d, use_container_width=True)
