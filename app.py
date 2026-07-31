@@ -424,7 +424,7 @@ TEXTS = {
 "ai_predict": "🔮 پیش‌بینی Jnet",
 "ai_prediction": "پیش‌بینی Jnet",
 "ai_prediction_unit": "ml/min",
-"ai_risk": " خطر آسیت","ai_low":"نرمال"
+"ai_risk": " خطر آسیت","ai_low":"نرمال",
 "ai_confidence": "سطح اطمینان",
 "ai_uncertainty": "📊 عدم‌قطعیت پیش‌بینی (۹۵٪)",
 "ai_features": "📊 ویژگی‌های ورودی",
