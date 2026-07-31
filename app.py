@@ -376,7 +376,7 @@ TEXTS = {
 "ai_predict": "🔮 Predict Jnet",
 "ai_prediction": "Predicted Jnet",
 "ai_prediction_unit": "ml/min",
-"ai_risk": "⚠️ Ascites Risk" if Jnet > 0 else "✅ Normal",
+"ai_risk": "⚠️ Ascites Risk","ai_low": "✅ Normal",
 "ai_confidence": "Confidence Level",
 "ai_uncertainty": "📊 Prediction Uncertainty (95% CI)",
 "ai_features": "📊 Input Features",
@@ -424,7 +424,7 @@ TEXTS = {
 "ai_predict": "🔮 پیش‌بینی Jnet",
 "ai_prediction": "پیش‌بینی Jnet",
 "ai_prediction_unit": "ml/min",
-"ai_risk": "⚠️ خطر آسیت" if Jnet > 0 else "✅ نرمال",
+"ai_risk": " خطر آسیت","ai_low":"نرمال"
 "ai_confidence": "سطح اطمینان",
 "ai_uncertainty": "📊 عدم‌قطعیت پیش‌بینی (۹۵٪)",
 "ai_features": "📊 ویژگی‌های ورودی",
@@ -1955,7 +1955,6 @@ with st.expander(t["ai_title"], expanded=False):
                 title="Model Performance (R² Score)",
                 xaxis_title="Model",
                 yaxis_title="R²",
-                template=get_plotly_template(),
                 height=400
             )
             st.plotly_chart(fig_comp, use_container_width=True)
@@ -1990,7 +1989,7 @@ with st.expander(t["ai_title"], expanded=False):
                     title="SHAP Feature Importance",
                     xaxis_title="Feature",
                     yaxis_title="Mean |SHAP Value|",
-                    template=get_plotly_template(),
+                    
                     height=400
                 )
                 st.plotly_chart(fig_shap, use_container_width=True)
@@ -2115,7 +2114,7 @@ with st.expander(t["ai_title"], expanded=False):
                     title="All Model Predictions",
                     xaxis_title="Model",
                     yaxis_title="Jnet (ml/min)",
-                    template=get_plotly_template(),
+
                     height=350
                 )
                 st.plotly_chart(fig_pred, use_container_width=True)
