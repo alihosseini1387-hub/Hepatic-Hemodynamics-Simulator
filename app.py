@@ -1608,17 +1608,17 @@ with btab2:
         )
     ])
 
-    fig_3d.update_layout(
-        title=f"<b>3D: {param1} & {param2} on {output_hm}</b><br><sup>{t['fixed_deltaP']} = {fixed_dp_hm} mmHg</sup>",
-        scene=dict(
-           xaxis_title=param1,
-           yaxis_title=param2,
-           zaxis_title=output_hm,
-           camera=dict(eye=dict(x=1.5, y=1.5, z=1.2))
-        ),
-        template=get_plotly_template(),
-        height=600
-    )
+        fig_3d.update_layout(
+            title=f"<b>3D: {param1} & {param2} on {output_hm}</b><br><sup>{t['fixed_deltaP']} = {fixed_dp_hm} mmHg</sup>",
+            scene=dict(
+               xaxis_title=param1,
+               yaxis_title=param2,
+               zaxis_title=output_hm,
+               camera=dict(eye=dict(x=1.5, y=1.5, z=1.2))
+            ),
+            template=get_plotly_template(),
+            height=600
+        ) 
 
         st.plotly_chart(fig_3d, use_container_width=True)
         
