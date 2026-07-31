@@ -1620,7 +1620,7 @@ with btab2:
         height=600
     )
 
-st.plotly_chart(fig_3d, use_container_width=True)
+        st.plotly_chart(fig_3d, use_container_width=True)
         
         st.plotly_chart(fig_bhm, use_container_width=True)
         
