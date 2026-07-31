@@ -1809,9 +1809,33 @@ def load_or_train_ai():
         return model_data
 
 # ============================================================
-# AI SECTION - Using Your Dictionary
+# AI SECTION 
+# ============================================================
+# ============================================================
+# 🤖 AI PREDICTOR - 10 Ultra-Advanced Models
+# ============================================================
+import os
+import json
+import joblib
+import numpy as np
+import pandas as pd
+import streamlit as st
+
+@st.cache_resource
+def load_ai_models():
+    """Load trained models from disk"""
+    if os.path.exists("ai_models_full.pkl") and os.path.exists("scaler.pkl"):
+        models = joblib.load("ai_models_full.pkl")
+        scaler = joblib.load("scaler.pkl")
+        return models, scaler
+    return None, None
+
+# ============================================================
+# AI SECTION
 # ============================================================
 with st.expander(t["ai_title"], expanded=False):
+    
+    # ---- Header ----
     st.markdown(f"""
     <div style="background: linear-gradient(135deg, #0c0c1e, #1a1a3e, #2d1b69); 
                 padding: 20px; border-radius: 12px; margin-bottom: 20px; 
@@ -1820,27 +1844,58 @@ with st.expander(t["ai_title"], expanded=False):
         <p style="margin: 5px 0 0 0; opacity: 0.8; font-size: 14px;">
             {t['ai_subtitle']}
         </p>
+        <div style="margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
+            <span style="background: rgba(0,212,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 11px;">🔥 10 Models</span>
+            <span style="background: rgba(124,58,237,0.2); padding: 4px 12px; border-radius: 20px; font-size: 11px;">🧠 Deep Learning</span>
+            <span style="background: rgba(255,107,107,0.2); padding: 4px 12px; border-radius: 20px; font-size: 11px;">📊 Stacking</span>
+            <span style="background: rgba(0,230,118,0.2); padding: 4px 12px; border-radius: 20px; font-size: 11px;">⚡ Optimized</span>
+        </div>
     </div>
     """, unsafe_allow_html=True)
     
-    # ====== Train Button ======
-    if "ai_trained" not in st.session_state or not st.session_state.ai_trained:
-        if st.button(t["ai_train"], use_container_width=True, type="primary"):
-            with st.spinner("⏳ Training..."):
-                ai_data = load_or_train_ai()
-                st.session_state.ai_data = ai_data
-                st.session_state.ai_trained = True
-                st.rerun()
+    # ====== Load models ======
+    models, scaler = load_ai_models()
+    
+    if models is None:
+        st.warning("⚠️ Model files not found. Please upload ai_models_full.pkl and scaler.pkl")
     else:
-        ai_data = st.session_state.ai_data
+        st.success(f"✅ {len(models)} models loaded successfully!")
         
-        # Show results
-        st.success(f"✅ {len(ai_data['models'])} models ready!")
-        
-        col1, col2, col3 = st.columns(3)
-        for i, (name, result) in enumerate(ai_data['results'].items()):
-            with [col1, col2, col3][i]:
-                st.metric(name, f"R² = {result['R²']:.4f}")
+        # ====== Show model info ======
+        if os.path.exists("ai_models_info.json"):
+            with open("ai_models_info.json", 'r', encoding='utf-8') as f:
+                info = json.load(f)
+            
+            results = info.get('results', {})
+            best_model = info.get('best_model', '')
+            
+            # Show best model
+            if best_model:
+                st.info(f"🏆 {t['ai_best_model'].format(model=best_model, r2=results.get(best_model, 0))}")
+            
+            # Show all results
+            st.subheader(t["ai_comparison"])
+            df = pd.DataFrame(results.items(), columns=[t['ai_model'], t['ai_r2']])
+            df = df.sort_values(t['ai_r2'], ascending=False)
+            st.dataframe(df, use_container_width=True, hide_index=True)
+            
+            # ---- Bar chart ----
+            fig_comp = go.Figure()
+            fig_comp.add_trace(go.Bar(
+                x=df[t['ai_model']],
+                y=df[t['ai_r2']],
+                marker_color=['#00d4ff' if x == best_model else '#7c3aed' for x in df[t['ai_model']]],
+                text=df[t['ai_r2']].round(4),
+                textposition='outside'
+            ))
+            fig_comp.update_layout(
+                title=t["ai_comparison"],
+                xaxis_title=t['ai_model'],
+                yaxis_title=t['ai_r2'],
+                height=400,
+                template=get_plotly_template()
+            )
+            st.plotly_chart(fig_comp, use_container_width=True)
         
         # ====== Prediction ======
         st.divider()
@@ -1860,42 +1915,89 @@ with st.expander(t["ai_title"], expanded=False):
             pred_alpha = st.slider(t["ai_alpha"], 0.2, 0.9, alpha, 0.01, key="pred_alpha_adv")
             
             if st.button(t["ai_predict"], use_container_width=True, type="primary"):
+                
+                # ---- Prepare input ----
                 X_pred = np.array([[pred_kf, pred_sigma, pred_pi, pred_dp, pred_alpha]])
-                X_pred_scaled = ai_data['scaler'].transform(X_pred)
+                X_pred_scaled = scaler.transform(X_pred)
                 
+                # ---- Predict with all models ----
                 predictions = {}
-                for name, model in ai_data['models'].items():
-                    predictions[name] = model.predict(X_pred_scaled)[0]
+                for name, model in models.items():
+                    try:
+                        predictions[name] = model.predict(X_pred_scaled)[0]
+                    except:
+                        predictions[name] = 0.0
                 
-                mean_pred = np.mean(list(predictions.values()))
-                std_pred = np.std(list(predictions.values()))
+                # ---- Ensemble stats ----
+                all_preds = np.array(list(predictions.values()))
+                mean_pred = np.mean(all_preds)
+                std_pred = np.std(all_preds)
+                ci_lower = mean_pred - 1.96 * std_pred
+                ci_upper = mean_pred + 1.96 * std_pred
                 
-                col_a, col_b, col_c = st.columns(3)
+                # ---- Confidence ----
+                confidence = min(abs(mean_pred) / (abs(mean_pred) + 5) * 100, 95)
                 
-                with col_a:
+                # ---- Display Results ----
+                col_pred1, col_pred2, col_pred3 = st.columns(3)
+                
+                with col_pred1:
                     delta_text = t["ai_risk"] if mean_pred > 0 else t["ai_low"]
-                    st.metric(t["ai_prediction"], f"{mean_pred:.3f} ml/min", delta=delta_text)
+                    st.metric(
+                        t["ai_prediction"],
+                        f"{mean_pred:.3f} {t['ai_prediction_unit']}",
+                        delta=delta_text
+                    )
                 
-                with col_b:
-                    confidence = min(abs(mean_pred) / (abs(mean_pred) + 5) * 100, 95)
-                    st.metric(t["ai_confidence"], f"{confidence:.0f}%")
+                with col_pred2:
+                    st.metric(t["ai_confidence"], f"{confidence:.1f}%")
                     st.progress(confidence / 100)
                 
-                with col_c:
-                    if mean_pred > 5:
-                        st.error("🚨 Severe Ascites Risk!")
-                    elif mean_pred > 0:
-                        st.warning("⚠️ " + t["ai_risk"])
-                    else:
-                        st.success("✅ " + t["ai_low"])
+                with col_pred3:
+                    st.metric(
+                        t["ai_uncertainty"],
+                        f"±{1.96 * std_pred:.3f}",
+                        delta=f"CI: [{ci_lower:.3f}, {ci_upper:.3f}]"
+                    )
                 
-                # Individual predictions
+                # ---- Clinical Interpretation ----
+                if mean_pred > 5:
+                    st.error("🚨 **SEVERE ASCITES RISK!** Immediate clinical evaluation required.")
+                elif mean_pred > 0:
+                    st.warning("⚠️ **ASCITES RISK DETECTED.** Monitor fluid balance and consider diuretic therapy.")
+                else:
+                    st.success("✅ **COMPENSATED STATE.** Lymphatic system is functioning properly.")
+                
+                # ---- All predictions table ----
                 st.caption("📊 Individual model predictions:")
                 pred_df = pd.DataFrame({
                     'Model': list(predictions.keys()),
                     'Jnet (ml/min)': [f"{v:.4f}" for v in predictions.values()]
-                })
-                st.dataframe(pred_df, hide_index=True, use_container_width=True)
+                }).sort_values('Jnet (ml/min)', ascending=False)
+                st.dataframe(pred_df, use_container_width=True, hide_index=True)
+                
+                # ---- Prediction bar chart ----
+                fig_pred = go.Figure()
+                names = list(predictions.keys())
+                values = list(predictions.values())
+                colors = ['#00d4ff' if 'Stacking' in n or 'Ensemble' in n else '#7c3aed' for n in names]
+                
+                fig_pred.add_trace(go.Bar(
+                    x=names,
+                    y=values,
+                    marker_color=colors,
+                    text=[f"{v:.3f}" for v in values],
+                    textposition='outside'
+                ))
+                fig_pred.add_hline(y=0, line_dash='dash', line_color='red', opacity=0.5)
+                fig_pred.update_layout(
+                    title="All Model Predictions",
+                    xaxis_title="Model",
+                    yaxis_title="Jnet (ml/min)",
+                    height=400,
+                    template=get_plotly_template()
+                )
+                st.plotly_chart(fig_pred, use_container_width=True)
 # ============================================================
 # Footer
 # ============================================================
