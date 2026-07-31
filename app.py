@@ -367,7 +367,7 @@ TEXTS = {
         "bernoulli_low": "Low",
         "bernoulli_medium": "Medium",
         "mc_ci_label": "Ascites Threshold",
-        "sens_medium": "Medium",
+        "sens_medium": "Medium", 
         "ai_title": "🧠 Ultra-Advanced AI Predictor",
 "ai_subtitle": "Stacking Ensemble + Deep Learning + SHAP Analysis",
 "ai_train": "🚀 Train Ultra-Advanced AI Models",
