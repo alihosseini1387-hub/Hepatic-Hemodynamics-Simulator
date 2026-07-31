@@ -1315,7 +1315,7 @@ with st.expander(t["sensitivity_title"], expanded=False):
             
             # Heatmap
             fig_hm = go.Figure(data=go.Heatmap(z=Z, x=x_vals, y=y_vals, colorscale='RdYlGn', zmid=0, hovertemplate=f'{param1}: %{{x:.2f}}<br>{param2}: %{{y:.2f}}<br>{output_hm}: %{{z:.2f}}<extra></extra>'))
-            fig_hm.update_layout(title=f"<b>{t['sens_heatmap_title'].format(p1=param1, p2=param2)}</b><br><sup>{t['fixed_deltaP']} = {fixed_dp_hm} mmHg</sup>", xaxis_title=param1, yaxis_title=param2, template=get_plotly_template(), height=550, coloraxis_colorbar=dict(title=output_hm))
+            fig_hm.update_layout(title=f"<b>{t['sens_heatmap_title'].format(p1=param1, p2=param2)}</b><br><sup>{t['fixed_deltaP']} = {fixed_dp_hm} mmHg</sup>", xaxis_title=param1, yaxis_title=param2, height=550, coloraxis_colorbar=dict(title=output_hm))
             
             # 3D Surface
             fig_3d = go.Figure(data=[go.Surface(z=Z, x=x_vals, y=y_vals, colorscale='Viridis', hovertemplate=f'{param1}: %{{x:.2f}}<br>{param2}: %{{y:.2f}}<br>{output_hm}: %{{z:.2f}}<extra></extra>')])
