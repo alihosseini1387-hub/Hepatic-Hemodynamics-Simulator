@@ -1670,363 +1670,179 @@ if 'preset_values' in st.session_state:
 # ============================================================
 # 🤖 ULTRA-ADVANCED AI - Stacking Ensemble + Deep Learning + SHAP
 # ============================================================
-with st.expander(t["ai_title"], expanded=False):
+# ============================================================
+# 🤖 AI PREDICTOR - 3 Models (Auto Save to GitHub)
+# ============================================================
+import os
+import joblib
+import subprocess
+
+MODEL_FILE = "ai_3models.pkl"
+
+@st.cache_resource
+def load_or_train_ai():
+    """Load model from disk, or train and save to GitHub"""
     
-    # ---- Header ----
-    st.markdown(f"""
-    <div style="background: linear-gradient(135deg, #0c0c1e, #1a1a3e, #2d1b69, #4a1942); 
-                padding: 25px; border-radius: 15px; margin-bottom: 20px; 
-                border-left: 6px solid #00d4ff; color: white;
-                box-shadow: 0 10px 40px rgba(0,0,0,0.5);">
-        <h4 style="margin: 0; color: #00d4ff; font-size: 24px;">🧠 {t['ai_title']}</h4>
-        <p style="margin: 5px 0 0 0; opacity: 0.8; font-size: 14px;">
-            {t['ai_subtitle']}
-        </p>
-        <div style="margin-top: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
-            <span style="background: rgba(0,212,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 11px;">🔥 Stacking Ensemble</span>
-            <span style="background: rgba(124,58,237,0.2); padding: 4px 12px; border-radius: 20px; font-size: 11px;">🧠 Deep Learning</span>
-            <span style="background: rgba(255,107,107,0.2); padding: 4px 12px; border-radius: 20px; font-size: 11px;">📊 SHAP Analysis</span>
-            <span style="background: rgba(0,230,118,0.2); padding: 4px 12px; border-radius: 20px; font-size: 11px;">⚡ Bayesian Opt</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    if os.path.exists(MODEL_FILE):
+        return joblib.load(MODEL_FILE)
     
-    # ============================================================
-    # TRAIN MODELS
-    # ============================================================
-    if st.button(t["ai_train"], use_container_width=True, type="primary"):
-        with st.spinner("⏳ Training 5 advanced AI models with 5000 samples..."):
+    with st.spinner("⏳ Training 3 AI models (this may take 15-20 seconds)..."):
+        from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
+        from sklearn.neural_network import MLPRegressor
+        from sklearn.preprocessing import StandardScaler
+        from sklearn.metrics import r2_score
+        import time
+        
+        start_time = time.time()
+        
+        # Generate 3000 samples
+        n_samples = 3000
+        X_train = np.zeros((n_samples, 5))
+        y_train = np.zeros(n_samples)
+        
+        progress_bar = st.progress(0)
+        
+        for i in range(n_samples):
+            kf = np.exp(np.random.uniform(np.log(0.5), np.log(10.0)))
+            sigma = np.random.beta(2, 2) * 0.45 + 0.05
+            pi = np.random.gamma(2, 0.5)
+            pi = np.clip(pi, 0.05, 3.0)
+            dp = np.random.uniform(8.0, 30.0) if np.random.rand() < 0.7 else np.random.uniform(1.0, 8.0)
+            alpha = np.random.uniform(0.2, 0.9)
             
-            import time
-            import warnings
-            warnings.filterwarnings('ignore')
+            Kf_tmp = calc_Kf_nonlinear(kf, dp)
+            Pi_tmp = calc_Pi_nonlinear(pi, dp)
+            Jv_tmp = calc_Jv(dp, Kf_tmp, alpha, sigma, Pi_tmp, 22, P_hep)
+            Jlymph_tmp = calc_Jlymph(Jmax, Km, Pi_tmp)
+            Jnet_tmp = calc_Jnet(Jv_tmp, Jlymph_tmp)
             
-            # ---- Import Libraries ----
-            from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor, StackingRegressor
-            from sklearn.neural_network import MLPRegressor
-            from sklearn.linear_model import RidgeCV, LinearRegression
-            from sklearn.preprocessing import StandardScaler, PolynomialFeatures
-            from sklearn.model_selection import cross_val_score, learning_curve
-            from sklearn.pipeline import Pipeline
-            from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
+            X_train[i] = [kf, sigma, pi, dp, alpha]
+            y_train[i] = Jnet_tmp
             
-            # ---- Try XGBoost ----
-            try:
-                import xgboost as xgb
-                has_xgb = True
-            except:
-                has_xgb = False
-            
-            # ---- Try SHAP ----
-            try:
-                import shap
-                has_shap = True
-            except:
-                has_shap = False
-            
-            # ---- Generate Training Data (5000 samples) ----
-            np.random.seed(42)
-            n_samples = 5000
-            
-            X_train = np.zeros((n_samples, 5))
-            y_train = np.zeros(n_samples)
-            
-            progress_bar = st.progress(0)
-            start_time = time.time()
-            
-            # Intelligent sampling with different distributions
-            for i in range(n_samples):
-                # Kf₀: log-uniform distribution (more samples at lower values)
-                kf_random = np.exp(np.random.uniform(np.log(0.5), np.log(10.0)))
-                
-                # σ: beta distribution (more samples in middle range)
-                sigma_random = np.random.beta(2, 2) * 0.45 + 0.05
-                
-                # Pi₀: gamma distribution (skewed)
-                pi_random = np.random.gamma(2, 0.5)
-                pi_random = np.clip(pi_random, 0.05, 3.0)
-                
-                # ΔP: mixture of distributions
-                if np.random.rand() < 0.3:
-                    dp_random = np.random.uniform(1.0, 8.0)
-                else:
-                    dp_random = np.random.uniform(8.0, 30.0)
-                
-                # α: uniform
-                alpha_random = np.random.uniform(0.2, 0.9)
-                
-                # ---- Call your model ----
-                Kf_tmp = calc_Kf_nonlinear(kf_random, dp_random)
-                Pi_tmp = calc_Pi_nonlinear(pi_random, dp_random)
-                Jv_tmp = calc_Jv(dp_random, Kf_tmp, alpha_random, sigma_random, Pi_tmp, 22, P_hep)
-                Jlymph_tmp = calc_Jlymph(Jmax, Km, Pi_tmp)
-                Jnet_tmp = calc_Jnet(Jv_tmp, Jlymph_tmp)
-                
-                X_train[i] = [kf_random, sigma_random, pi_random, dp_random, alpha_random]
-                y_train[i] = Jnet_tmp
-                
-                if i % 200 == 0:
-                    progress_bar.progress(i / n_samples)
-            
-            progress_bar.progress(1.0)
-            
-            # ---- Preprocessing ----
-            scaler = StandardScaler()
-            X_scaled = scaler.fit_transform(X_train)
-            
-            # ---- Feature Engineering ----
-            poly = PolynomialFeatures(degree=2, include_bias=False)
-            X_poly = poly.fit_transform(X_scaled)
-            
-            # ---- Define Base Models with Optimized Hyperparameters ----
-            base_models = []
-            model_names = []
-            
-            # 1. Random Forest (optimized)
-            rf = RandomForestRegressor(
-                n_estimators=300,
-                max_depth=15,
-                min_samples_split=3,
-                min_samples_leaf=2,
-                max_features='sqrt',
+            if i % 200 == 0:
+                progress_bar.progress(i / n_samples)
+        
+        progress_bar.progress(1.0)
+        
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X_train)
+        
+        # ---- Model 1: XGBoost (or Gradient Boosting) ----
+        try:
+            import xgboost as xgb
+            model1 = xgb.XGBRegressor(
+                n_estimators=200,
+                max_depth=8,
+                learning_rate=0.07,
+                subsample=0.8,
+                colsample_bytree=0.8,
+                reg_alpha=0.1,
+                reg_lambda=1.0,
                 random_state=42,
                 n_jobs=-1
             )
-            base_models.append(('rf', rf))
-            model_names.append('Random Forest')
-            
-            # 2. Gradient Boosting (optimized)
-            gb = GradientBoostingRegressor(
-                n_estimators=250,
+            model1_name = "XGBoost"
+        except:
+            model1 = GradientBoostingRegressor(
+                n_estimators=200,
                 max_depth=7,
                 learning_rate=0.08,
                 subsample=0.8,
-                min_samples_split=5,
                 random_state=42
             )
-            base_models.append(('gb', gb))
-            model_names.append('Gradient Boosting')
-            
-            # 3. XGBoost (if available)
-            if has_xgb:
-                xgb_model = xgb.XGBRegressor(
-                    n_estimators=300,
-                    max_depth=8,
-                    learning_rate=0.06,
-                    subsample=0.8,
-                    colsample_bytree=0.8,
-                    reg_alpha=0.1,
-                    reg_lambda=1.0,
-                    random_state=42,
-                    n_jobs=-1
-                )
-                base_models.append(('xgb', xgb_model))
-                model_names.append('XGBoost')
-            
-            # 4. Neural Network (optimized)
-            mlp = MLPRegressor(
-                hidden_layer_sizes=(256, 128, 64, 32),
-                activation='relu',
-                solver='adam',
-                alpha=0.001,
-                batch_size=64,
-                max_iter=1000,
-                early_stopping=True,
-                validation_fraction=0.1,
-                random_state=42
-            )
-            base_models.append(('mlp', mlp))
-            model_names.append('Neural Network')
-            
-            # 5. Ridge Regression (linear baseline)
-            ridge = RidgeCV(alphas=[0.01, 0.1, 1.0, 10.0, 100.0])
-            base_models.append(('ridge', ridge))
-            model_names.append('Ridge')
-            
-            # ---- Meta-Model ----
-            meta_model = LinearRegression()
-            
-            # ---- Stacking Ensemble ----
-            stacking = StackingRegressor(
-                estimators=base_models,
-                final_estimator=meta_model,
-                cv=5,
-                n_jobs=-1
-            )
-            
-            # ---- Train Stacking Ensemble ----
-            with st.spinner("Training Stacking Ensemble (this may take a moment)..."):
-                stacking.fit(X_scaled, y_train)
-            
-            # ---- Train individual models for comparison ----
-            individual_models = {}
-            for name, model in base_models:
-                individual_models[name] = model
-                model.fit(X_scaled, y_train)
-            
-            # ---- Evaluate all models ----
-            results = {}
-            for name, model in individual_models.items():
-                y_pred = model.predict(X_scaled)
-                results[name] = {
-                    'R²': r2_score(y_train, y_pred),
-                    'RMSE': np.sqrt(mean_squared_error(y_train, y_pred)),
-                    'MAE': mean_absolute_error(y_train, y_pred)
-                }
-            
-            # Stacking ensemble performance
-            y_pred_stack = stacking.predict(X_scaled)
-            results['Stacking Ensemble'] = {
-                'R²': r2_score(y_train, y_pred_stack),
-                'RMSE': np.sqrt(mean_squared_error(y_train, y_pred_stack)),
-                'MAE': mean_absolute_error(y_train, y_pred_stack)
-            }
-            
-            # ---- Cross-validation scores ----
-            cv_scores = {}
-            for name, model in individual_models.items():
-                cv_scores[name] = cross_val_score(model, X_scaled, y_train, cv=5, scoring='r2').mean()
-            cv_scores['Stacking Ensemble'] = cross_val_score(stacking, X_scaled, y_train, cv=5, scoring='r2').mean()
-            
-            # ---- Store in session state ----
-            st.session_state.ai_stacking = stacking
-            st.session_state.ai_scaler = scaler
-            st.session_state.ai_poly = poly
-            st.session_state.ai_individual_models = individual_models
-            st.session_state.ai_results = results
-            st.session_state.ai_cv_scores = cv_scores
-            st.session_state.ai_model_names = model_names
-            st.session_state.ai_X_scaled = X_scaled
-            st.session_state.ai_y_train = y_train
-            st.session_state.ai_trained = True
-            st.session_state.ai_train_time = time.time() - start_time
-            st.session_state.ai_has_shap = has_shap
-            
-            # ---- SHAP Analysis ----
-            if has_shap and 'Random Forest' in individual_models:
-                with st.spinner("Calculating SHAP values..."):
-                    explainer = shap.TreeExplainer(individual_models['Random Forest'])
-                    shap_values = explainer.shap_values(X_scaled[:500])
-                    st.session_state.ai_shap_explainer = explainer
-                    st.session_state.ai_shap_values = shap_values
-            
-            # ---- Display Results ----
-            st.success(t["ai_train_success"].format(n=n_samples))
-            
-            # ---- Model Comparison Table ----
-            st.subheader(t["ai_comparison"])
-            
-            comp_data = []
-            for name in list(results.keys()):
-                comp_data.append({
-                    t['ai_model']: name,
-                    t['ai_r2']: f"{results[name]['R²']:.4f}",
-                    t['ai_rmse']: f"{results[name]['RMSE']:.4f}",
-                    t['ai_mae']: f"{results[name]['MAE']:.4f}",
-                    t['ai_cv_score']: f"{cv_scores[name]:.4f}"
-                })
-            
-            df_comp = pd.DataFrame(comp_data)
-            st.dataframe(df_comp, use_container_width=True, hide_index=True)
-            
-            # ---- Bar Chart: R² Comparison ----
-            fig_comp = go.Figure()
-            names = list(results.keys())
-            r2_values = [results[n]['R²'] for n in names]
-            
-            colors = ['#00d4ff' if n == 'Stacking Ensemble' else 
-                     '#7c3aed' if n == 'Neural Network' else 
-                     '#f9a825' if n == 'XGBoost' else 
-                     '#00e676' if n == 'Gradient Boosting' else 
-                     '#ff6b6b' for n in names]
-            
-            fig_comp.add_trace(go.Bar(
-                x=names,
-                y=r2_values,
-                marker_color=colors,
-                text=[f"{v:.4f}" for v in r2_values],
-                textposition='outside'
-            ))
-            fig_comp.add_hline(y=0.9, line_dash='dash', line_color='green', 
-                              annotation_text="Excellent", annotation_position='bottom right')
-            fig_comp.add_hline(y=0.7, line_dash='dash', line_color='orange',
-                              annotation_text="Good", annotation_position='bottom right')
-            fig_comp.update_layout(
-                title="Model Performance (R² Score)",
-                xaxis_title="Model",
-                yaxis_title="R²",
-                height=400
-            )
-            st.plotly_chart(fig_comp, use_container_width=True)
-            
-            # ---- Best Model ----
-            best_name = max(results, key=lambda x: results[x]['R²'])
-            st.info(t["ai_best_model"].format(model=best_name, r2=results[best_name]['R²']))
-            
-            # ---- Training Time ----
-            st.metric(t["ai_train_time"], f"{st.session_state.ai_train_time:.2f} {t['ai_seconds']}")
-            
-            # ---- Feature Importance (SHAP) ----
-            if has_shap and hasattr(st.session_state, 'ai_shap_values'):
-                st.subheader(t["ai_feature_importance"])
-                
-                feature_names = [t["ai_kf0"], t["ai_sigma"], t["ai_pi0"], t["ai_dp"], t["ai_alpha"]]
-                
-                # SHAP Summary Plot
-                fig_shap = go.Figure()
-                
-                shap_means = np.abs(st.session_state.ai_shap_values).mean(axis=0)
-                sorted_idx = np.argsort(shap_means)[::-1]
-                
-                fig_shap.add_trace(go.Bar(
-                    x=[feature_names[i] for i in sorted_idx],
-                    y=shap_means[sorted_idx],
-                    marker_color=['#00d4ff', '#7c3aed', '#ff6b6b', '#f9a825', '#00e676'],
-                    text=[f"{v:.4f}" for v in shap_means[sorted_idx]],
-                    textposition='outside'
-                ))
-                fig_shap.update_layout(
-                    title="SHAP Feature Importance",
-                    xaxis_title="Feature",
-                    yaxis_title="Mean |SHAP Value|",
-                    
-                    height=400
-                )
-                st.plotly_chart(fig_shap, use_container_width=True)
-            
-            # ---- Hyperparameters ----
-            with st.expander(t["ai_hyperparams"]):
-                st.json({
-                    'Random Forest': {
-                        'n_estimators': 300,
-                        'max_depth': 15,
-                        'min_samples_split': 3,
-                        'max_features': 'sqrt'
-                    },
-                    'Gradient Boosting': {
-                        'n_estimators': 250,
-                        'max_depth': 7,
-                        'learning_rate': 0.08,
-                        'subsample': 0.8
-                    },
-                    'Neural Network': {
-                        'hidden_layers': [256, 128, 64, 32],
-                        'activation': 'relu',
-                        'alpha': 0.001,
-                        'batch_size': 64,
-                        'max_iter': 1000
-                    },
-                    'Stacking Ensemble': {
-                        'base_models': len(base_models),
-                        'meta_model': 'LinearRegression',
-                        'cv_folds': 5
-                    }
-                })
+            model1_name = "Gradient Boosting"
+        
+        # ---- Model 2: Random Forest ----
+        model2 = RandomForestRegressor(
+            n_estimators=200,
+            max_depth=12,
+            min_samples_split=3,
+            min_samples_leaf=2,
+            max_features='sqrt',
+            random_state=42,
+            n_jobs=-1
+        )
+        model2_name = "Random Forest"
+        
+        # ---- Model 3: Neural Network ----
+        model3 = MLPRegressor(
+            hidden_layer_sizes=(128, 64, 32),
+            activation='relu',
+            solver='adam',
+            alpha=0.001,
+            batch_size=64,
+            max_iter=800,
+            early_stopping=True,
+            validation_fraction=0.1,
+            random_state=42
+        )
+        model3_name = "Neural Network"
+        
+        models = {model1_name: model1, model2_name: model2, model3_name: model3}
+        for name, model in models.items():
+            model.fit(X_scaled, y_train)
+        
+        results = {}
+        for name, model in models.items():
+            y_pred = model.predict(X_scaled)
+            results[name] = {'R²': r2_score(y_train, y_pred)}
+        
+        model_data = {
+            'models': models,
+            'scaler': scaler,
+            'results': results,
+            'model_names': list(models.keys()),
+            'train_time': time.time() - start_time
+        }
+        
+        joblib.dump(model_data, MODEL_FILE)
+        
+        # ---- Auto Push to GitHub ----
+        try:
+            subprocess.run(["git", "add", MODEL_FILE], check=True, capture_output=True)
+            subprocess.run(["git", "commit", "-m", f"Update AI model - {n_samples} samples"], check=True, capture_output=True)
+            subprocess.run(["git", "push"], check=True, capture_output=True)
+            st.success(f"✅ {t['ai_train_success'].format(n=n_samples)} and pushed to GitHub!")
+        except:
+            st.success(f"✅ {t['ai_train_success'].format(n=n_samples)} (local only)")
+        
+        return model_data
+
+# ============================================================
+# AI SECTION - Using Your Dictionary
+# ============================================================
+with st.expander(t["ai_title"], expanded=False):
+    st.markdown(f"""
+    <div style="background: linear-gradient(135deg, #0c0c1e, #1a1a3e, #2d1b69); 
+                padding: 20px; border-radius: 12px; margin-bottom: 20px; 
+                border-left: 5px solid #00d4ff; color: white;">
+        <h4 style="margin: 0; color: #00d4ff;">🧠 {t['ai_title']}</h4>
+        <p style="margin: 5px 0 0 0; opacity: 0.8; font-size: 14px;">
+            {t['ai_subtitle']}
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
     
-    # ============================================================
-    # PREDICTION SECTION
-    # ============================================================
-    if "ai_trained" in st.session_state and st.session_state.ai_trained:
+    # ====== Train Button ======
+    if "ai_trained" not in st.session_state or not st.session_state.ai_trained:
+        if st.button(t["ai_train"], use_container_width=True, type="primary"):
+            with st.spinner("⏳ Training..."):
+                ai_data = load_or_train_ai()
+                st.session_state.ai_data = ai_data
+                st.session_state.ai_trained = True
+                st.rerun()
+    else:
+        ai_data = st.session_state.ai_data
+        
+        # Show results
+        st.success(f"✅ {len(ai_data['models'])} models ready!")
+        
+        col1, col2, col3 = st.columns(3)
+        for i, (name, result) in enumerate(ai_data['results'].items()):
+            with [col1, col2, col3][i]:
+                st.metric(name, f"R² = {result['R²']:.4f}")
+        
+        # ====== Prediction ======
         st.divider()
         st.subheader(t["ai_predict"])
         
@@ -2044,104 +1860,42 @@ with st.expander(t["ai_title"], expanded=False):
             pred_alpha = st.slider(t["ai_alpha"], 0.2, 0.9, alpha, 0.01, key="pred_alpha_adv")
             
             if st.button(t["ai_predict"], use_container_width=True, type="primary"):
-                
-                # ---- Prepare input ----
                 X_pred = np.array([[pred_kf, pred_sigma, pred_pi, pred_dp, pred_alpha]])
-                X_pred_scaled = st.session_state.ai_scaler.transform(X_pred)
+                X_pred_scaled = ai_data['scaler'].transform(X_pred)
                 
-                # ---- Predict with all models ----
                 predictions = {}
-                for name, model in st.session_state.ai_individual_models.items():
+                for name, model in ai_data['models'].items():
                     predictions[name] = model.predict(X_pred_scaled)[0]
                 
-                # ---- Stacking prediction ----
-                pred_stack = st.session_state.ai_stacking.predict(X_pred_scaled)[0]
-                predictions['Stacking Ensemble'] = pred_stack
+                mean_pred = np.mean(list(predictions.values()))
+                std_pred = np.std(list(predictions.values()))
                 
-                # ---- Uncertainty (using ensemble std) ----
-                all_preds = np.array(list(predictions.values()))
-                mean_pred = np.mean(all_preds)
-                std_pred = np.std(all_preds)
-                ci_lower = mean_pred - 1.96 * std_pred
-                ci_upper = mean_pred + 1.96 * std_pred
+                col_a, col_b, col_c = st.columns(3)
                 
-                # ---- Display Results ----
-                col_pred1, col_pred2, col_pred3 = st.columns(3)
+                with col_a:
+                    delta_text = t["ai_risk"] if mean_pred > 0 else t["ai_low"]
+                    st.metric(t["ai_prediction"], f"{mean_pred:.3f} ml/min", delta=delta_text)
                 
-                with col_pred1:
-                    st.metric(
-                        t["ai_prediction"],
-                        f"{mean_pred:.3f} {t['ai_prediction_unit']}",
-                        delta=t["ai_risk"] if mean_pred > 0 else "✅ Normal"
-                    )
-                
-                with col_pred2:
+                with col_b:
                     confidence = min(abs(mean_pred) / (abs(mean_pred) + 5) * 100, 95)
-                    st.metric(t["ai_confidence"], f"{confidence:.1f}%")
+                    st.metric(t["ai_confidence"], f"{confidence:.0f}%")
                     st.progress(confidence / 100)
                 
-                with col_pred3:
-                    st.metric(
-                        "📊 Uncertainty",
-                        f"±{1.96 * std_pred:.3f}",
-                        delta=f"CI: [{ci_lower:.3f}, {ci_upper:.3f}]"
-                    )
+                with col_c:
+                    if mean_pred > 5:
+                        st.error("🚨 Severe Ascites Risk!")
+                    elif mean_pred > 0:
+                        st.warning("⚠️ " + t["ai_risk"])
+                    else:
+                        st.success("✅ " + t["ai_low"])
                 
-                # ---- All Predictions Table ----
+                # Individual predictions
+                st.caption("📊 Individual model predictions:")
                 pred_df = pd.DataFrame({
                     'Model': list(predictions.keys()),
-                    'Jnet Prediction': list(predictions.values())
-                }).sort_values('Jnet Prediction', ascending=False)
-                
-                st.dataframe(pred_df, use_container_width=True, hide_index=True)
-                
-                # ---- Prediction Bar Chart ----
-                fig_pred = go.Figure()
-                
-                names = list(predictions.keys())
-                values = list(predictions.values())
-                colors = ['#00d4ff' if n == 'Stacking Ensemble' else '#7c3aed' for n in names]
-                
-                fig_pred.add_trace(go.Bar(
-                    x=names,
-                    y=values,
-                    marker_color=colors,
-                    text=[f"{v:.3f}" for v in values],
-                    textposition='outside'
-                ))
-                fig_pred.add_hline(y=0, line_dash='dash', line_color='red', opacity=0.5)
-                fig_pred.update_layout(
-                    title="All Model Predictions",
-                    xaxis_title="Model",
-                    yaxis_title="Jnet (ml/min)",
-
-                    height=350
-                )
-                st.plotly_chart(fig_pred, use_container_width=True)
-                
-                # ---- Clinical Interpretation ----
-                if mean_pred > 5:
-                    st.error("🚨 **SEVERE ASCITES RISK!** Immediate clinical evaluation required.")
-                elif mean_pred > 0:
-                    st.warning("⚠️ **ASCITES RISK DETECTED.** Monitor fluid balance and consider diuretic therapy.")
-                else:
-                    st.success("✅ **COMPENSATED STATE.** Lymphatic system is functioning properly.")
-                
-                # ---- Ensemble Weights ----
-                with st.expander(t["ai_ensemble_weights"]):
-                    if hasattr(st.session_state.ai_stacking, 'final_estimator_'):
-                        weights = st.session_state.ai_stacking.final_estimator_.coef_
-                        if len(weights) > 0:
-                            weight_data = []
-                            for i, name in enumerate(st.session_state.ai_model_names):
-                                if i < len(weights):
-                                    weight_data.append({
-                                        t['ai_model']: name,
-                                        t['ai_weight']: abs(weights[i]),
-                                        'Weight %': f"{abs(weights[i]) / sum(abs(weights)) * 100:.1f}%"
-                                    })
-                            df_weights = pd.DataFrame(weight_data)
-                            st.dataframe(df_weights, use_container_width=True, hide_index=True)
+                    'Jnet (ml/min)': [f"{v:.4f}" for v in predictions.values()]
+                })
+                st.dataframe(pred_df, hide_index=True, use_container_width=True)
 # ============================================================
 # Footer
 # ============================================================
