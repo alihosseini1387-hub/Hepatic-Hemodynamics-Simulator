@@ -1157,7 +1157,7 @@ with st.expander(t["bernoulli_title"], expanded=False):
             
             # 3D Surface
             fig_3d = go.Figure(data=[go.Surface(z=Z, x=x_vals, y=y_vals, colorscale='Viridis', hovertemplate=f'{bparam1}: %{{x:.2f}}<br>{bparam2}: %{{y:.2f}}<br>{bhm_output}: %{{z:.3f}}<extra></extra>')])
-            fig_3d.update_layout(title=f"<b>3D: {bparam1} & {bparam2} on {bhm_output}</b>", scene=dict(xaxis_title=bparam1, yaxis_title=bparam2, zaxis_title=bhm_output, camera=dict(eye=dict(x=1.5, y=1.5, z=1.2))), template=get_plotly_template(), height=600)
+            fig_3d.update_layout(title=f"<b>3D: {bparam1} & {bparam2} on {bhm_output}</b>", scene=dict(xaxis_title=bparam1, yaxis_title=bparam2, zaxis_title=bhm_output, camera=dict(eye=dict(x=1.5, y=1.5, z=1.2))), height=600)
             
             col1, col2 = st.columns(2)
             with col1: st.plotly_chart(fig_bhm, use_container_width=True)
