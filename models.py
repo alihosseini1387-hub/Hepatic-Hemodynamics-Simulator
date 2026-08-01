@@ -126,7 +126,7 @@ def calc_Kf_nonlinear(Kf0, deltaP):
     if deltaP < 12:
         return Kf0
     else:
-        exponent = 0.05 * (deltaP - 12)
+        exponent = 0.05 * (deltaP - 12)/((20-12)**2)
         return Kf0 * np.exp(exponent)
 
 
