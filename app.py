@@ -81,7 +81,7 @@ def get_plotly_template():
 # ============================================================
 TEXTS = {
     "en": {
-        "app_title": "🩸 Hepatic Filtration Simulator",
+        "app_title": " Hepatic Filtration Simulator 🩸",
         "app_subtitle": "Based on the paper *Simulation of hepatic blood flow based on fluid mechanics principles*, Mandegar Alborz High School",
         
         # Presets
@@ -942,7 +942,7 @@ if mode == t["mode_auto"]:
     )
     
     st.subheader(t["key_values"])
-    key_points = [4, 8, 12, 16, 20]
+    key_points = [4, 8, 12,14,16, 20]
     data = []
     for dp in key_points:
         Kf = calc_Kf_nonlinear(Kf0, dp)
@@ -1241,11 +1241,11 @@ with st.expander(t["bernoulli_title"], expanded=False):
             
             # Heatmap
             fig_bhm = go.Figure(data=go.Heatmap(z=Z, x=x_vals, y=y_vals, colorscale='Viridis', hovertemplate=f'{bparam1}: %{{x:.2f}}<br>{bparam2}: %{{y:.2f}}<br>{bhm_output}: %{{z:.3f}}<extra></extra>'))
-            fig_bhm.update_layout(title=f"<b>{t['bernoulli_heatmap'].format(p1=bparam1, p2=bparam2)}</b>", xaxis_title=bparam1, yaxis_title=bparam2, template=get_plotly_template(), height=550, coloraxis_colorbar=dict(title=bhm_output))
+            fig_bhm.update_layout(title=f"<b>{t['bernoulli_heatmap'].format(p1=bparam1, p2=bparam2)}</b>", xaxis_title=bparam1, yaxis_title=bparam2, height=550, coloraxis_colorbar=dict(title=bhm_output))
             
             # 3D Surface
             fig_3d = go.Figure(data=[go.Surface(z=Z, x=x_vals, y=y_vals, colorscale='Viridis', hovertemplate=f'{bparam1}: %{{x:.2f}}<br>{bparam2}: %{{y:.2f}}<br>{bhm_output}: %{{z:.3f}}<extra></extra>')])
-            fig_3d.update_layout(title=f"<b>3D: {bparam1} & {bparam2} on {bhm_output}</b>", scene=dict(xaxis_title=bparam1, yaxis_title=bparam2, zaxis_title=bhm_output, camera=dict(eye=dict(x=1.5, y=1.5, z=1.2))), height=600)
+            fig_3d.update_layout(title=f"<b>3D: {bparam1} & {bparam2} on {bhm_output}</b>", scene=dict(xaxis_title=bparam1, yaxis_title=bparam2, zaxis_title=bhm_output, camera=dict(eye=dict(x=1.5, y=1.5, z=1.5))), height=600)
             
             col1, col2 = st.columns(2)
             with col1: st.plotly_chart(fig_bhm, use_container_width=True)
