@@ -20,3 +20,4 @@ streamlit-oauth
 plotly-express>=0.4.0
 fpdf
 plotly-express
+starlette<0.40.0
