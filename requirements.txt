@@ -16,7 +16,7 @@ streamlit-extras
 streamlit-folium
 streamlit-keyup
 streamlit-drawable-canvas
-streamlit-oaut
+streamlit-oauth
 plotly-express>=0.4.0
 fpdf
 plotly-express
