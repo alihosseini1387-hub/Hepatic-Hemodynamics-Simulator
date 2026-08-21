@@ -837,8 +837,8 @@ with st.sidebar:
     dPi = st.slider(t["dpi"], 20, 25, 22, 1)
     
     st.header(t["lymph_params"])
-    Jmax = st.number_input(t["jmax"], 10, 50, 40, 1)
-    Km = st.number_input(t["km"], 0.1, 2.0, 0.74, 0.01)
+    Jmax = st.number_input(t["jmax"], 10, 50, 35, 1)
+    Km = st.number_input(t["km"], 0.1, 2.0, 0.63, 0.01)
     max_deltaP = st.slider(t["max_dp"], 12, 30, 20)
 
 # ============================================================
