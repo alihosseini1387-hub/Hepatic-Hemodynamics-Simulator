@@ -1637,5 +1637,5 @@ if 'preset_values' in st.session_state:
 # ============================================================
 st.divider()
 st.caption(t["footer"])
-st.caption("Ver:2.2.8")
+st.caption("Ver:2.3.0")
 st.caption("Ali Hosseini; email: ali.hosseini1387@icloud.com")
