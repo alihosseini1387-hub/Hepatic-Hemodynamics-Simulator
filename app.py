@@ -1663,15 +1663,12 @@ with st.sidebar:
             del st.session_state[key]
         st.rerun()
 
-# Preset Values (from sidebar)
-if 'preset_values' in st.session_state:
-    sc = st.session_state.preset_values
-    st.info(t["preset_loaded"].format(name=preset))
+
 
 # ============================================================
 # Footer
 # ============================================================
 st.divider()
 st.caption(t["footer"])
-st.caption("Ver:2.2.8")
+st.caption("Ver:4.0.0")
 st.caption("Ali Hosseini; email: ali.hosseini1387@icloud.com")
