@@ -1,18 +1,14 @@
 """
 مدل‌های ریاضی شبیه‌سازی همودینامیک کبد
-بر اساس مقاله: شبیه‌سازی جریان خون در کبد بر اساس اصول و معادلات مکانیک سیالات
-Version: 7.0.0
+Version: 8.0.0 (Two-Compartment Model)
 """
 
 import numpy as np
 
-# ======================== ثابت‌های فیزیکی ========================
 mmHg_to_Pa = 133.322
 rho_blood = 1060
 g = 9.81
 
-
-# ======================== مدل کاسون ========================
 
 def calc_mu_apparent(mu_inf, tau_y, gamma_dot):
     if gamma_dot <= 0:
@@ -27,8 +23,6 @@ def calc_shear_rate(Q, r0):
     return (4 * Q_sin) / (np.pi * r0 ** 3)
 
 
-# ======================== افت فشار سینوزوئیدی ========================
-
 def calc_sinusoid_pressure_drop(Q, mu, L, r0, beta):
     Q_sin = Q / 1000000000
     if beta == 0:
@@ -36,8 +30,6 @@ def calc_sinusoid_pressure_drop(Q, mu, L, r0, beta):
     else:
         return (8 * mu * L * Q_sin) / (3 * np.pi * r0 ** 4 * beta) * (1 / (1 - beta) ** 3 - 1)
 
-
-# ======================== توابع غیرخطی ========================
 
 def calc_Kf_nonlinear(Kf0, deltaP):
     if deltaP < 12:
@@ -60,8 +52,6 @@ def calc_Jlymph(Jmax, Km, Pi):
     return (Jmax * Pi) / (Km + Pi)
 
 
-# ======================== محاسبه α ========================
-
 def calc_alpha(Q_portal, Q_artery, A_portal, A_hepatic, h, r0, beta, L, mu_inf, tau_y):
     Q_total = Q_portal + Q_artery
     vp = Q_portal / A_portal if A_portal > 0 else 0
@@ -80,8 +70,6 @@ def calc_alpha(Q_portal, Q_artery, A_portal, A_hepatic, h, r0, beta, L, mu_inf, 
     return alpha, Q_total, vp, vh, dp_sin, dp_h, dp_v, dp_total, mu_app
 
 
-# ======================== محاسبه تراوش ========================
-
 def calc_Jv(deltaP, Kf, alpha, sigma, Pi, dpi, P_hepatic):
     Pc = (alpha * deltaP) + P_hepatic
     hydrostatic = Pc - Pi
@@ -94,65 +82,126 @@ def calc_Jnet(Jv, Jlymph):
     return Jv - Jlymph
 
 
-# ======================== Pi دینامیک با اشباع ========================
+def calc_J_capsule(Kf_capsule_0, deltaP, Pi, P_peritoneum, threshold=12):
+    """
+    عبور مایع از کپسول گلیسون
+    
+    J_capsule = Kf_capsule(ΔP) × (Pi - P_peritoneum)
+    Kf_capsule(ΔP) = Kf_capsule_0 × max(0, ΔP - 12)
+    """
+    Kf_capsule = Kf_capsule_0 * max(0, deltaP - threshold)
+    driving_force = max(0, Pi - P_peritoneum)
+    return Kf_capsule * driving_force
 
-def calc_Pi_dynamic(Pi0, k_elastance, V, Pi_max=10.0):
-    Pi = Pi0 + k_elastance * V
-    return min(Pi, Pi_max)
+
+def calc_J_perit_lymph(J_perit_max, K_perit, V_asc):
+    """تخلیه لنفاوی صفاق"""
+    if (K_perit + V_asc) <= 0:
+        return 0
+    return (J_perit_max * V_asc) / (K_perit + V_asc)
 
 
-# ======================== مدل دینامیک آسیت ========================
-
-def predict_ascites_volume_dynamic(Kf, alpha, sigma, dpi, P_hepatic, Pi0,
-                                   k_elastance, Jmax, Km, deltaP,
-                                   time_hours, V0=0, dt=0.01, Pi_max=10.0):
-    time_min = time_hours * 60
-    dt_min = dt * 60
+def predict_ascites_two_compartment(Kf_sinusoid, alpha, sigma, dpi,
+                                     P_hepatic, Pi0, k_elastance,
+                                     Kf_capsule_0, k_abdominal,
+                                     P_perit_0, Jmax, Km,
+                                     J_perit_max, K_perit,
+                                     deltaP_0, time_weeks,
+                                     V_int_0=0.0, V_asc_0=0.0,
+                                     dt=0.001):
+    """
+    مدل دو-کپارتمانه تشکیل آسیت
+    
+    کمپارتمان ۱: فضای بین‌بافتی کبد (V_int)
+    کمپارتمان ۲: حفره صفاقی (V_asc)
+    
+    معادلات:
+    ---------
+    dV_int/dt = Jv - Jlymph - J_capsule
+    dV_asc/dt = J_capsule - J_perit_lymph
+    J_capsule = Kf_capsule_0 × max(0, ΔP - 12) × (Pi - P_peritoneum)
+    P_peritoneum = P_perit_0 + k_abdominal × V_asc
+    ΔP = ΔP_0 + k_abdominal × V_asc  (حلقه بازخورد)
+    
+    خروجی:
+    -------
+    time_array, V_int_array, V_asc_array, Jv_array, Jlymph_array,
+    Jcapsule_array, Jperit_array, Pi_array, Pperit_array, deltaP_array
+    """
+    time_min = time_weeks * 7 * 24 * 60
+    dt_min = dt * 7 * 24 * 60
+    
     n_steps = int(time_min / dt_min)
     if n_steps < 1:
         n_steps = 1
-
-    time_array = np.linspace(0, time_hours, n_steps + 1)
-    V_array = np.zeros(n_steps + 1)
-    Jnet_array = np.zeros(n_steps + 1)
-    Pi_array = np.zeros(n_steps + 1)
+    
+    time_array = np.linspace(0, time_weeks, n_steps + 1)
+    V_int_array = np.zeros(n_steps + 1)
+    V_asc_array = np.zeros(n_steps + 1)
     Jv_array = np.zeros(n_steps + 1)
     Jlymph_array = np.zeros(n_steps + 1)
-
-    V_array[0] = V0
+    Jcapsule_array = np.zeros(n_steps + 1)
+    Jperit_array = np.zeros(n_steps + 1)
+    Pi_array = np.zeros(n_steps + 1)
+    Pperit_array = np.zeros(n_steps + 1)
+    deltaP_array = np.zeros(n_steps + 1)
+    
+    V_int_array[0] = V_int_0
+    V_asc_array[0] = V_asc_0
     Pi_array[0] = Pi0
-
-    Pc = alpha * deltaP + P_hepatic
-    Jv_array[0] = Kf * ((Pc - Pi0) - sigma * dpi)
-    Jlymph_array[0] = (Jmax * Pi0) / (Km + Pi0) if (Km + Pi0) > 0 else 0
-    Jnet_array[0] = Jv_array[0] - Jlymph_array[0]
-
+    Pperit_array[0] = P_perit_0
+    deltaP_array[0] = deltaP_0
+    
     for i in range(n_steps):
-        Pi = calc_Pi_dynamic(Pi0, k_elastance, V_array[i], Pi_max)
-        Pi_array[i] = Pi
+        V_int = V_int_array[i]
+        V_asc = V_asc_array[i]
+        
+        # فشار پورتال (حلقه بازخورد)
+        deltaP = deltaP_0 + k_abdominal * V_asc
+        deltaP_array[i] = deltaP
+        
+        # فشار سینوزوئیدی
         Pc = alpha * deltaP + P_hepatic
-        Jv = Kf * ((Pc - Pi) - sigma * dpi)
-        Jlymph = (Jmax * Pi) / (Km + Pi) if (Km + Pi) > 0 else 0
-        Jnet = Jv - Jlymph
+        
+        # فشار بین‌بافتی
+        Pi = Pi0 + k_elastance * V_int
+        Pi_array[i] = Pi
+        
+        # Kf غیرخطی
+        Kf_eff = calc_Kf_nonlinear(Kf_sinusoid, deltaP)
+        
+        # Jv
+        Jv = Kf_eff * ((Pc - Pi) - sigma * dpi)
+        Jv = max(0, Jv)
         Jv_array[i] = Jv
+        
+        # Jlymph
+        Jlymph = calc_Jlymph(Jmax, Km, Pi)
         Jlymph_array[i] = Jlymph
-        Jnet_array[i] = Jnet
-        V_array[i + 1] = V_array[i] + Jnet * dt_min
-        V_array[i + 1] = max(0, V_array[i + 1])
+        
+        # فشار صفاقی
+        P_perit = P_perit_0 + k_abdominal * V_asc
+        Pperit_array[i] = P_perit
+        
+        # J_capsule
+        J_capsule = calc_J_capsule(Kf_capsule_0, deltaP, Pi, P_perit)
+        Jcapsule_array[i] = J_capsule
+        
+        # J_perit_lymph
+        J_perit = calc_J_perit_lymph(J_perit_max, K_perit, V_asc)
+        Jperit_array[i] = J_perit
+        
+        # به‌روزرسانی دو کمپارتمان
+        dV_int = (Jv - Jlymph - J_capsule) * dt_min
+        dV_asc = (J_capsule - J_perit) * dt_min
+        
+        V_int_array[i + 1] = max(0, V_int + dV_int)
+        V_asc_array[i + 1] = max(0, V_asc + dV_asc)
+    
+    return (time_array, V_int_array, V_asc_array,
+            Jv_array, Jlymph_array, Jcapsule_array,
+            Jperit_array, Pi_array, Pperit_array, deltaP_array)
 
-    Pi_final = calc_Pi_dynamic(Pi0, k_elastance, V_array[-1], Pi_max)
-    Pc_final = alpha * deltaP + P_hepatic
-    Jv_final = Kf * ((Pc_final - Pi_final) - sigma * dpi)
-    Jlymph_final = (Jmax * Pi_final) / (Km + Pi_final) if (Km + Pi_final) > 0 else 0
-    Jnet_array[-1] = Jv_final - Jlymph_final
-    Pi_array[-1] = Pi_final
-    Jv_array[-1] = Jv_final
-    Jlymph_array[-1] = Jlymph_final
-
-    return time_array, V_array, Jnet_array, Pi_array, Jv_array, Jlymph_array
-
-
-# ======================== تحلیل سیستم ========================
 
 def analyze_system(deltaP, params):
     Kf0 = params['Kf0']
@@ -169,21 +218,19 @@ def analyze_system(deltaP, params):
     Jlymph = calc_Jlymph(Jmax, Km, Pi)
     Jnet = calc_Jnet(Jv, Jlymph)
     if Jnet <= 0:
-        status = "تخلیه کامل - بدون آسیت"
+        status = "تخلیه کامل"
         risk = "کم"
     elif Jnet < 5:
-        status = "تجمع خفیف - خطر پایین آسیت"
+        status = "تجمع خفیف"
         risk = "متوسط"
     elif Jnet < 15:
-        status = "تجمع متوسط - خطر آسیت"
+        status = "تجمع متوسط"
         risk = "بالا"
     else:
-        status = "تجمع شدید - خطر بالای آسیت"
+        status = "تجمع شدید"
         risk = "بسیار بالا"
-    return {
-        'deltaP': deltaP, 'Kf': Kf, 'Pi': Pi, 'Jv': Jv,
-        'Jlymph': Jlymph, 'Jnet': Jnet, 'status': status, 'risk': risk
-    }
+    return {'deltaP': deltaP, 'Kf': Kf, 'Pi': Pi, 'Jv': Jv,
+            'Jlymph': Jlymph, 'Jnet': Jnet, 'status': status, 'risk': risk}
 
 
 def analyze_system_range(deltaP_range, params):
