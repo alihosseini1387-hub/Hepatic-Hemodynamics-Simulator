@@ -1,6 +1,14 @@
 """
 مدل‌های ریاضی شبیه‌سازی همودینامیک کبد
 بر اساس مقاله: شبیه‌سازی جریان خون در کبد بر اساس اصول و معادلات مکانیک سیالات
+
+این فایل شامل مدل‌های ریاضی برای:
+- محاسبه ویسکوزیته ظاهری خون (مدل کاسون)
+- محاسبه افت فشار سینوزوئیدی
+- محاسبه پارامتر α
+- محاسبه شار تراوش (Starling اصلاح‌شده)
+- محاسبه تخلیه لنفاوی (Michaelis-Menten)
+- پیش‌بینی دینامیک حجم آسیت (معادله دیفرانسیل)
 """
 
 import numpy as np
@@ -10,6 +18,7 @@ mmHg_to_Pa = 133.322  # تبدیل mmHg به پاسکال
 rho_blood = 1060      # چگالی خون (kg/m³)
 g = 9.81              # شتاب گرانش (m/s²)
 
+
 # ======================== مدل کاسون (رفتار غیرنیوتنی خون) ========================
 
 def calc_mu_apparent(mu_inf, tau_y, gamma_dot):
@@ -17,46 +26,34 @@ def calc_mu_apparent(mu_inf, tau_y, gamma_dot):
     محاسبه ویسکوزیته ظاهری خون با مدل کاسون
     
     پارامترها:
-    ----------
-    mu_inf : float
-        ویسکوزیته در نرخ برش بینهایت (Pa.s) - مقدار پایه: 0.0035
-    tau_y : float
-        تنش تسلیم کاسون (Pa) - مقدار پایه: 0.005
-    gamma_dot : float
-        نرخ برش (s⁻¹)
+    -----------
+    mu_inf : ویسکوزیته در نرخ برش بی‌نهایت (Pa·s)
+    tau_y : تنش تسلیم (Pa)
+    gamma_dot : نرخ برش (s⁻¹)
     
-    بازگشت:
-    --------
-    float : ویسکوزیته ظاهری (Pa.s)
-    
-    رابطه:
+    خروجی:
     -------
-    μ_app = μ_inf * (1 + sqrt(τ_y / (μ_inf * γ_dot)))²
+    mu_app : ویسکوزیته ظاهری (Pa·s)
     """
-    
+    if gamma_dot <= 0:
+        return mu_inf
     return mu_inf * (1 + np.sqrt(tau_y / (mu_inf * gamma_dot)))**2
 
 
 def calc_shear_rate(Q, r0):
     """
-    محاسبه نرخ برش تقریبی در سینوزوئید
+    محاسبه نرخ برش در سینوزوئید
     
     پارامترها:
-    ----------
-    Q : float
-        دبی حجمی (m³/s)
-    r0 : float
-        شعاع سینوزوئید (m)
+    -----------
+    Q : دبی جریان (m³/s)
+    r0 : شعاع سینوزوئید (m)
     
-    بازگشت:
-    --------
-    float : نرخ برش (s⁻¹)
-    
-    رابطه:
+    خروجی:
     -------
-    γ̇ = 4Q / (π * r0³)
+    gamma_dot : نرخ برش (s⁻¹)
     """
-    Q_sin=Q/1000000000
+    Q_sin = Q / 1000000000  # تبدیل به m³/s
     if r0 <= 0:
         return 1.0
     return (4 * Q_sin) / (np.pi * r0**3)
@@ -66,34 +63,21 @@ def calc_shear_rate(Q, r0):
 
 def calc_sinusoid_pressure_drop(Q, mu, L, r0, beta):
     """
-    محاسبه افت فشار در سینوزوئید با شعاع متغیر (رابطه ۳ مقاله)
+    محاسبه افت فشار سینوزوئید با شعاع متغیر (معادله ۳)
     
     پارامترها:
-    ----------
-    Q : float
-        دبی حجمی هر سینوزوئید (m³/s)
-    mu : float
-        ویسکوزیته خون (Pa.s)
-    L : float
-        طول سینوزوئید (m)
-    r0 : float
-        شعاع اولیه سینوزوئید (m)
-    beta : float
-        ضریب مخروطی شدن (0 تا 1)
+    -----------
+    Q : دبی جریان (m³/s)
+    mu : ویسکوزیته خون (Pa·s)
+    L : طول سینوزوئید (m)
+    r0 : شعاع پایه سینوزوئید (m)
+    beta : ضریب تغییر شعاع
     
-    بازگشت:
-    --------
-    float : افت فشار (Pa)
-    
-    رابطه:
+    خروجی:
     -------
-    ΔP = (8 * μ * L * Q) / (3 * π * r0⁴ * β) * (1/(1-β)³ - 1)
-    
-    برای β = 0 (حالت خاص): ΔP = (8 * μ * L * Q) / (π * r0⁴)
-    
-    
+    delta_P : افت فشار سینوزوئیدی (Pa)
     """
-    Q_sin=Q/1000000000
+    Q_sin = Q / 1000000000  # تبدیل به m³/s
     if beta == 0:
         # قانون پوازوی برای شعاع ثابت
         return (8 * mu * L * Q_sin) / (np.pi * r0**4)
@@ -105,23 +89,16 @@ def calc_sinusoid_pressure_drop(Q, mu, L, r0, beta):
 
 def calc_Kf_nonlinear(Kf0, deltaP):
     """
-    ضریب فیلتراسیون غیرخطی وابسته به فشار (صفحه ۱۲ مقاله)
+    محاسبه ضریب فیلتراسیون غیرخطی Kf
     
     پارامترها:
-    ----------
-    Kf0 : float
-        ضریب فیلتراسیون پایه (ml/min/mmHg)
-    deltaP : float
-        اختلاف فشار پورتال-فوق کبدی (mmHg)
+    -----------
+    Kf0 : ضریب فیلتراسیون پایه (ml/min/mmHg)
+    deltaP : گرادیان فشار پورتال-هپاتیک (mmHg)
     
-    بازگشت:
-    --------
-    float : ضریب فیلتراسیون مؤثر
-    
-    رابطه:
+    خروجی:
     -------
-    برای ΔP < 12:  Kf = Kf0
-    برای ΔP ≥ 12:  Kf = Kf0 * exp(0.075*(20-11)*((ΔP-11)/(20-11))²)
+    Kf : ضریب فیلتراسیون مؤثر (ml/min/mmHg)
     """
     if deltaP < 12:
         return Kf0
@@ -132,23 +109,16 @@ def calc_Kf_nonlinear(Kf0, deltaP):
 
 def calc_Pi_nonlinear(Pi0, deltaP):
     """
-    فشار میان‌بافتی غیرخطی (مکانیسم جبرانی) (صفحه ۱۳ مقاله)
+    محاسبه فشار میان‌بافتی غیرخطی Pi (مکانیسم جبرانی)
     
     پارامترها:
-    ----------
-    Pi0 : float
-        فشار میان‌بافتی پایه (mmHg)
-    deltaP : float
-        اختلاف فشار پورتال-فوق کبدی (mmHg)
+    -----------
+    Pi0 : فشار میان‌بافتی پایه (mmHg)
+    deltaP : گرادیان فشار پورتال-هپاتیک (mmHg)
     
-    بازگشت:
-    --------
-    float : فشار میان‌بافتی مؤثر
-    
-    رابطه:
+    خروجی:
     -------
-    برای ΔP < 12:  Pi = Pi0
-    برای ΔP ≥ 12:  Pi = Pi0 * (ΔP - 11)^(1/3)
+    Pi : فشار میان‌بافتی مؤثر (mmHg)
     """
     if deltaP < 12:
         return Pi0
@@ -158,64 +128,61 @@ def calc_Pi_nonlinear(Pi0, deltaP):
 
 def calc_Jlymph(Jmax, Km, Pi):
     """
-    تخلیه لنفاوی با معادله مایکلـیس-منتن (صفحه ۱۵ مقاله)
+    محاسبه تخلیه لنفاوی با معادله Michaelis-Menten
     
     پارامترها:
-    ----------
-    Jmax : float
-        حداکثر ظرفیت تخلیه لنفاوی (ml/min)
-    Km : float
-        فشار میان‌بافتی در نصف ظرفیت بیشینه (mmHg)
-    Pi : float
-        فشار میان‌بافتی مؤثر (mmHg)
+    -----------
+    Jmax : حداکثر ظرفیت لنفاوی (ml/min)
+    Km : ثابت Michaelis-Menten (mmHg)
+    Pi : فشار میان‌بافتی (mmHg)
     
-    بازگشت:
-    --------
-    float : نرخ تخلیه لنفاوی (ml/min)
-    
-    رابطه:
+    خروجی:
     -------
-    Jlymph = (Jmax * Pi) / (Km + Pi)
+    Jlymph : نرخ تخلیه لنفاوی (ml/min)
     """
+    if Km + Pi == 0:
+        return 0
     return (Jmax * Pi) / (Km + Pi)
+
+
 # ======================== محاسبه α (پارامتر مؤثر) ========================
+
 def calc_alpha(Q_portal, Q_artery, A_portal, A_hepatic, h, r0, beta, L, mu_inf, tau_y):
     """
-    محاسبه پارامتر α و سایر پارامترهای همودینامیک (رابطه ۱ مقاله)
+    محاسبه پارامتر α (سهم مقاومت سینوزوئیدی از کل افت فشار)
     
     پارامترها:
-    ----------
-    Q_portal : float
-        دبی ورید باب (m³/s)
-    Q_artery : float
-        دبی سرخرگ کبدی (m³/s)
-    A_portal : float
-        سطح مقطع ورید باب (m²)
-    A_hepatic : float
-        سطح مقطع ورید فوق‌کبدی (m²)
-    h : float
-        اختلاف ارتفاع مؤثر (m)
-    r0 : float
-        شعاع سینوزوئید (m)
-    beta : float
-        ضریب مخروطی شدن
-    L : float
-        طول سینوزوئید (m)
-    mu_inf : float
-        ویسکوزیته در نرخ برش بینهایت (Pa.s)
-    tau_y : float
-        تنش تسلیم کاسون (Pa)
+    -----------
+    Q_portal : دبی ورید باب (m³/s)
+    Q_artery : دبی سرخرگ کبدی (m³/s)
+    A_portal : سطح مقطع ورید باب (m²)
+    A_hepatic : سطح مقطع ورید فوق‌کبدی (m²)
+    h : اختلاف ارتفاع (m)
+    r0 : شعاع سینوزوئید (m)
+    beta : ضریب تغییر شعاع
+    L : طول سینوزوئید (m)
+    mu_inf : ویسکوزیته پایه (Pa·s)
+    tau_y : تنش تسلیم (Pa)
     
-    بازگشت:
-    --------
-    tuple : (alpha, Q_total, vp, vh, dp_sin, dp_h, dp_v, dp_total, mu_app)
+    خروجی:
+    -------
+    alpha : پارامتر مؤثر
+    Q_total : دبی کل (m³/s)
+    vp : سرعت ورید باب (m/s)
+    vh : سرعت ورید فوق‌کبدی (m/s)
+    dp_sin : افت فشار سینوزوئیدی (Pa)
+    dp_h : افت فشار ارتفاع (Pa)
+    dp_v : افت فشار جنبشی (Pa)
+    dp_total : کل افت فشار (Pa)
+    mu_app : ویسکوزیته ظاهری (Pa·s)
     """
+    
     # دبی کل
     Q_total = Q_portal + Q_artery
     
     # سرعت‌ها
     vp = Q_portal / A_portal if A_portal > 0 else 0
-    vh = Q_total*0.327 / A_hepatic if A_hepatic > 0 else 0
+    vh = Q_total * 0.327 / A_hepatic if A_hepatic > 0 else 0
     
     # محاسبه نرخ برش و ویسکوزیته ظاهری با مدل کاسون
     gamma_dot = calc_shear_rate(Q_total, r0)
@@ -243,49 +210,33 @@ def calc_alpha(Q_portal, Q_artery, A_portal, A_hepatic, h, r0, beta, L, mu_inf, 
     return alpha, Q_total, vp, vh, dp_sin, dp_h, dp_v, dp_total, mu_app
 
 
-# ======================== محاسبه تراوش (استارلینگ اصالح‌شده) ========================
+# ======================== محاسبه تراوش (استارلینگ اصلاح‌شده) ========================
 
-def calc_Jv(deltaP, Kf, alpha, sigma, Pi,dpi ,P_hepatic):
-    
+def calc_Jv(deltaP, Kf, alpha, sigma, Pi, dpi, P_hepatic):
     """
-    محاسبه شار تراوش با معادله استارلینگ اصالح‌شده (رابطه ۵ مقاله)
+    محاسبه شار تراوش با معادله Starling اصلاح‌شده
     
     پارامترها:
-    ----------
-    deltaP : float
-        اختلاف فشار پورتال-فوق کبدی (mmHg)
-    Kf : float
-        ضریب فیلتراسیون (ml/min/mmHg)
-    alpha : float
-        پارامتر مؤثر سینوزوئیدی
-    sigma : float
-        ضریب انعکاس
-    Pi : float
-        فشار میان‌بافتی (mmHg)
-    P_hepatic : float
-        فشار ورید فوق‌کبدی (mmHg) - مقدار پایه: 4
+    -----------
+    deltaP : گرادیان فشار پورتال-هپاتیک (mmHg)
+    Kf : ضریب فیلتراسیون (ml/min/mmHg)
+    alpha : پارامتر مؤثر
+    sigma : ضریب انعکاس
+    Pi : فشار میان‌بافتی (mmHg)
+    dpi : اختلاف فشار انکوتیک (πc - πi) (mmHg)
+    P_hepatic : فشار ورید هپاتیک (mmHg)
     
-    بازگشت:
-    --------
-    float : شار تراوش خالص (ml/min)
-    
-    رابطه:
+    خروجی:
     -------
-    Jv = Kf * [(Pc - Pi) - σ*(πc - πi)]
-    
-    که در آن:
-    Pc = α * ΔP + P_hepatic
-    πc = 24 mmHg (فشار انکوتیک پلاسما)
-    πi = 2 mmHg (فشار انکوتیک بین‌بافتی)
+    Jv : شار تراوش (ml/min)
     """
- 
     
     # فشار سینوزوئیدی
     Pc = (alpha * deltaP) + P_hepatic
     
     # ترم‌های معادله استارلینگ
     hydrostatic = Pc - Pi
-    oncotic = sigma * (dpi)
+    oncotic = sigma * dpi
     
     # شار تراوش
     Jv = Kf * (hydrostatic - oncotic)
@@ -295,71 +246,140 @@ def calc_Jv(deltaP, Kf, alpha, sigma, Pi,dpi ,P_hepatic):
 
 def calc_Jnet(Jv, Jlymph):
     """
-    محاسبه نرخ خالص تجمع مایع (صفحه ۱۶ مقاله)
+    محاسبه نرخ خالص تجمع مایع
     
     پارامترها:
-    ----------
-    Jv : float
-        شار تراوش استارلینگ (ml/min)
-    Jlymph : float
-        نرخ تخلیه لنفاوی (ml/min)
+    -----------
+    Jv : شار تراوش (ml/min)
+    Jlymph : تخلیه لنفاوی (ml/min)
     
-    بازگشت:
-    --------
-    float : نرخ خالص تجمع (ml/min)
-    
-    رابطه:
+    خروجی:
     -------
-    Jnet = Jv - Jlymph
-    
-    اگر Jnet > 0: مایع تجمع می‌یابد (آسیت)
-    اگر Jnet ≤ 0: سیستم لنفاوی قادر به تخلیه است
+    Jnet : نرخ خالص تجمع (ml/min)
     """
     return Jv - Jlymph
 
 
-def predict_ascites_volume(Jnet, time_hours, V0=0):
+# ======================== مدل دینامیک آسیت (جایگزین مدل استاتیک) ========================
+
+def predict_ascites_volume_dynamic(Kf, alpha, sigma, dpi, P_hepatic, Pi0, 
+                                   k_elastance, Jmax, Km, deltaP, 
+                                   time_hours, V0=0, dt=0.01):
     """
-    پیش‌بینی حجم آسیت در طول زمان (صفحه ۱۷ مقاله)
+    حل معادله دیفرانسیل dV/dt = Jnet(t) با روش Euler
+    
+    این تابع، مدل دینامیک تشکیل آسیت # را پیاده‌سازی می‌کند که تعداد در آن
+    فشار میان‌ب گامافتی (Pi) با افزایش حجم مایع افزایش می‌یابد و باعث
+    کاهش تدریجی Jnet و رسیدن حجم آسیت به حد اشباع می‌شود.
+    
+    معادله دیفرانسیل:
+    -----------------
+    dV/dt = Jnet(t) = Jv(t) - Jlymph(t)
+    
+    که در آن:
+    Pi(V) = Pi0 + k_elastance × V
+    Jv = Kf × [(Pc - Pi) - σ × Δπ]
+    Jlymph = (Jmax × Pi) / (Km + Pi)
     
     پارامترها:
-    ----------
-    Jnet : float
-        نرخ خالص تجمع مایع (ml/min)
-    time_hours : float
-        زمان (ساعت)
-    V0 : float
-        حجم اولیه آسیت (ml)
+    -----------
+    Kf : ضریب فیلتراسیون (ml/min/mmHg)
+    alpha : سهم مقاومت سینوزوئیدی
+    sigma : ضریب انعکاس
+    dpi : اختلاف فشار انکوتیک (πc - πi) (mmHg)
+    P_hepatic : فشار ورید هپاتیک (mmHg)
+    Pi0 : فشار بین‌بافتی پایه (mmHg)
+    k_elastance : ضریب الاستانس بافت (mmHg/mL)
+    Jmax : حداکثر ظرفیت لنفاوی (ml/min)
+    Km : ثابت Michaelis-Menten (mmHg)
+    deltaP : گرادیان فشار پورتال-هپاتیک (mmHg)
+    time_hours : زمان شبیه‌سازی (ساعت)
+    V0 : حجم اولیه آسیت (mL)
+    dt : گام زمانی (ساعت)
     
-    بازگشت:
-    --------
-    float : حجم آسیت (ml)
-    
-    رابطه:
+    خروجی:
     -------
-    V(t) = V0 + ∫ Jnet dt
+    time_array : آرایه زمان (ساعت)
+    V_array : آرایه حجم آسیت (mL)
+    Jnet_array : آرایه نرخ خالص تجمع (ml/min)
+    Pi_array : آرایه فشار بین‌بافتی (mmHg)
     """
+    
+    # تبدیل زمان به دقیقه
     time_min = time_hours * 60
-    return V0 + Jnet * time_min
+    dt_min = dt * 60
+    
+   ‌ها
+    n_steps = int(time_min / dt_min)
+    if n_steps < 1:
+        n_steps = 1
+    
+    # آرایه‌های خروجی
+    time_array = np.linspace(0, time_hours, n_steps + 1)
+    V_array = np.zeros(n_steps + 1)
+    Jnet_array = np.zeros(n_steps + 1)
+    Pi_array = np.zeros(n_steps + 1)
+    
+    # مقدار اولیه
+    V_array[0] = V0
+    Pi_array[0] = Pi0
+    
+    # محاسبه Jnet اولیه
+    Pc = alpha * deltaP + P_hepatic
+    Jv_initial = Kf * ((Pc - Pi0) - sigma * dpi)
+    Jlymph_initial = (Jmax * Pi0) / (Km + Pi0) if (Km + Pi0) > 0 else 0
+    Jnet_array[0] = Jv_initial - Jlymph_initial
+    
+    # حلقه اصلی (روش Euler)
+    for i in range(n_steps):
+        # ۱. محاسبه Pi بر اساس حجم فعلی
+        Pi = Pi0 + k_elastance * V_array[i]
+        Pi_array[i] = Pi
+        
+        # ۲. محاسبه فشار سینوزوئیدی
+        Pc = alpha * deltaP + P_hepatic
+        
+        # ۳. محاسبه Jv (تراوش)
+        Jv = Kf * ((Pc - Pi) - sigma * dpi)
+        
+        # ۴. محاسبه Jlymph (تخلیه لنفاوی)
+        Jlymph = (Jmax * Pi) / (Km + Pi) if (Km + Pi) > 0 else 0
+        
+        # ۵. محاسبه Jnet
+        Jnet = Jv - Jlymph
+        Jnet_array[i] = Jnet
+        
+        # ۶. گام Euler
+        V_array[i + 1] = V_array[i] + Jnet * dt_min
+        V_array[i + 1] = max(0, V_array[i + 1])  # حجم منفی نمی‌شه
+    
+    # مقدار نهایی
+    Pi_final = Pi0 + k_elastance * V_array[-1]
+    Pc_final = alpha * deltaP + P_hepatic
+    Jv_final = Kf * ((Pc_final - Pi_final) - sigma * dpi)
+    Jlymph_final = (Jmax * Pi_final) / (Km + Pi_final) if (Km + Pi_final) > 0 else 0
+    Jnet_array[-1] = Jv_final - Jlymph_final
+    Pi_array[-1] = Pi_final
+    
+    return time_array, V_array, Jnet_array, Pi_array
 
 
 # ======================== تحلیل کامل سیستم ========================
 
 def analyze_system(deltaP, params):
     """
-   
-    تحلیل کامل سیستم در یک فشار مشخص
-    پارامترها:
-    ----------
-    deltaP : float
-        اختلاف فشار (mmHg)
-    params : dict
-        دیکشنری شامل تمام پارامترها
+    تحلیل کامل سیستم برای یک مقدار deltaP مشخص
     
-    بازگشت:
-    --------
-    dict : نتایج تحلیل
+    پارامترها:
+    -----------
+    deltaP : گرادیان فشار پورتال-هپاتیک (mmHg)
+    params : دیکشنری پارامترها
+    
+    خروجی:
+    -------
+    results : دیکشنری نتایج
     """
+    
     # استخراج پارامترها
     Kf0 = params['Kf0']
     alpha = params['alpha']
@@ -367,14 +387,14 @@ def analyze_system(deltaP, params):
     Pi0 = params['Pi0']
     Jmax = params.get('Jmax', 30)
     Km = params.get('Km', 0.5)
-    dpi=params['dPi']
+    dpi = params['dPi']
     
     # محاسبه پارامترهای غیرخطی
     Kf = calc_Kf_nonlinear(Kf0, deltaP)
     Pi = calc_Pi_nonlinear(Pi0, deltaP)
     
     # محاسبه تراوش
-    P_hep=4
+    P_hep = 4
     Jv = calc_Jv(deltaP, Kf, alpha, sigma, Pi, dpi, P_hep)
     
     # محاسبه تخلیه لنفاوی
@@ -411,18 +431,16 @@ def analyze_system(deltaP, params):
 
 def analyze_system_range(deltaP_range, params):
     """
-    تحلیل کامل سیستم در بازه فشارها
+    تحلیل سیستم برای یک محدوده از deltaP
     
     پارامترها:
-    ----------
-    deltaP_range : array
-        بازه فشارها (mmHg)
-    params : dict
-        دیکشنری شامل تمام پارامترها
+    -----------
+    deltaP_range : آرایه مقادیر deltaP (mmHg)
+    params : دیکشنری پارامترها
     
-    بازگشت:
-    --------
-    dict : نتایج تحلیل برای هر فشار
+    خروجی:
+    -------
+    results : دیکشنری نتایج
     """
     results = {
         'deltaP': deltaP_range,
