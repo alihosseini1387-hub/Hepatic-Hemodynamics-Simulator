@@ -1,6 +1,6 @@
 """
 Hepatic Hemodynamics Simulation App
-Version: 4.0.0 (Dynamic Ascites Model with Saturation)
+Version: 4.0.8 (Dynamic Ascites Model with Saturation)
 """
 
 import streamlit as st
@@ -8,10 +8,7 @@ import numpy as np
 import plotly.graph_objects as go
 import pandas as pd
 
-from models import (mmHg_to_Pa, rho_blood, g, calc_mu_apparent, calc_shear_rate,
-                    calc_sinusoid_pressure_drop, calc_Kf_nonlinear, calc_Pi_nonlinear,
-                    calc_Jlymph, calc_Jnet, calc_alpha, calc_Jv,
-                    calc_Pi_dynamic, predict_ascites_volume_dynamic)
+from models import mmHg_to_Pa, rho_blood, g, calc_mu_apparent, calc_shear_rate, calc_sinusoid_pressure_drop, calc_Kf_nonlinear, calc_Pi_nonlinear, calc_Jlymph, calc_Jnet, calc_alpha, calc_Jv, calc_Pi_dynamic, predict_ascites_volume_dynamic
 
 from utils import get_clinical_interpretation
 
