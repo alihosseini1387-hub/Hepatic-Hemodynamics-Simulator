@@ -1,7 +1,7 @@
 """
 مدل‌های ریاضی شبیه‌سازی همودینامیک کبد
 بر اساس مقاله: شبیه‌سازی جریان خون در کبد بر اساس اصول و معادلات مکانیک سیالات
-Version: 5.0.0
+Version: 7.0.0
 """
 
 import numpy as np
@@ -12,7 +12,7 @@ rho_blood = 1060
 g = 9.81
 
 
-# ======================== مدل کاسون (رفتار غیرنیوتنی خون) ========================
+# ======================== مدل کاسون ========================
 
 def calc_mu_apparent(mu_inf, tau_y, gamma_dot):
     if gamma_dot <= 0:
@@ -130,16 +130,13 @@ def predict_ascites_volume_dynamic(Kf, alpha, sigma, dpi, P_hepatic, Pi0,
     for i in range(n_steps):
         Pi = calc_Pi_dynamic(Pi0, k_elastance, V_array[i], Pi_max)
         Pi_array[i] = Pi
-
         Pc = alpha * deltaP + P_hepatic
         Jv = Kf * ((Pc - Pi) - sigma * dpi)
         Jlymph = (Jmax * Pi) / (Km + Pi) if (Km + Pi) > 0 else 0
         Jnet = Jv - Jlymph
-
         Jv_array[i] = Jv
         Jlymph_array[i] = Jlymph
         Jnet_array[i] = Jnet
-
         V_array[i + 1] = V_array[i] + Jnet * dt_min
         V_array[i + 1] = max(0, V_array[i + 1])
 
@@ -147,7 +144,6 @@ def predict_ascites_volume_dynamic(Kf, alpha, sigma, dpi, P_hepatic, Pi0,
     Pc_final = alpha * deltaP + P_hepatic
     Jv_final = Kf * ((Pc_final - Pi_final) - sigma * dpi)
     Jlymph_final = (Jmax * Pi_final) / (Km + Pi_final) if (Km + Pi_final) > 0 else 0
-
     Jnet_array[-1] = Jv_final - Jlymph_final
     Pi_array[-1] = Pi_final
     Jv_array[-1] = Jv_final
@@ -166,15 +162,12 @@ def analyze_system(deltaP, params):
     Jmax = params.get('Jmax', 30)
     Km = params.get('Km', 0.5)
     dpi = params['dPi']
-
     Kf = calc_Kf_nonlinear(Kf0, deltaP)
     Pi = calc_Pi_nonlinear(Pi0, deltaP)
     P_hep = 4
-
     Jv = calc_Jv(deltaP, Kf, alpha, sigma, Pi, dpi, P_hep)
     Jlymph = calc_Jlymph(Jmax, Km, Pi)
     Jnet = calc_Jnet(Jv, Jlymph)
-
     if Jnet <= 0:
         status = "تخلیه کامل - بدون آسیت"
         risk = "کم"
@@ -187,28 +180,14 @@ def analyze_system(deltaP, params):
     else:
         status = "تجمع شدید - خطر بالای آسیت"
         risk = "بسیار بالا"
-
     return {
-        'deltaP': deltaP,
-        'Kf': Kf,
-        'Pi': Pi,
-        'Jv': Jv,
-        'Jlymph': Jlymph,
-        'Jnet': Jnet,
-        'status': status,
-        'risk': risk
+        'deltaP': deltaP, 'Kf': Kf, 'Pi': Pi, 'Jv': Jv,
+        'Jlymph': Jlymph, 'Jnet': Jnet, 'status': status, 'risk': risk
     }
 
 
 def analyze_system_range(deltaP_range, params):
-    results = {
-        'deltaP': deltaP_range,
-        'Kf': [],
-        'Pi': [],
-        'Jv': [],
-        'Jlymph': [],
-        'Jnet': []
-    }
+    results = {'deltaP': deltaP_range, 'Kf': [], 'Pi': [], 'Jv': [], 'Jlymph': [], 'Jnet': []}
     for dp in deltaP_range:
         res = analyze_system(dp, params)
         results['Kf'].append(res['Kf'])
