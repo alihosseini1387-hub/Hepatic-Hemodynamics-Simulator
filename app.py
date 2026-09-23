@@ -1,6 +1,6 @@
 """
 Hepatic Hemodynamics Simulation App
-Version: 3.0.0 (Dynamic Ascites Model)
+Version: 4.0.0 (Dynamic Ascites Model with Saturation)
 """
 
 import streamlit as st
@@ -11,7 +11,7 @@ import pandas as pd
 from models import (mmHg_to_Pa, rho_blood, g, calc_mu_apparent, calc_shear_rate,
                     calc_sinusoid_pressure_drop, calc_Kf_nonlinear, calc_Pi_nonlinear,
                     calc_Jlymph, calc_Jnet, calc_alpha, calc_Jv,
-                    predict_ascites_volume_dynamic)
+                    calc_Pi_dynamic, predict_ascites_volume_dynamic)
 
 from utils import get_clinical_interpretation
 
@@ -22,28 +22,6 @@ def get_plotly_template():
     else:
         return "plotly_white"
 
-
-# ============================================================
-# Session State & Intro
-# ============================================================
-if "first_run" not in st.session_state:
-    st.session_state.first_run = True
-
-if st.session_state.first_run:
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.markdown("""
-        <div style="text-align: center; padding: 50px 0;">
-            <h1 style="font-size: 60px;">🩸</h1>
-            <h1 style="font-size: 40px; color: #ff4b4b;">Hepatic Hemodynamics Simulator</h1>
-            <h3 style="color: #666;">شبیه‌ساز همودینامیک کبد</h3>
-            <p style="color: #999; font-size: 14px;">Version 3.0 - Dynamic Ascites Model</p>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("Enter 🚀", use_container_width=True):
-            st.session_state.first_run = False
-            st.rerun()
-    st.stop()
 
 st.set_page_config(page_title="Hepatic Hemodynamics Simulator", page_icon="🩸", layout="wide")
 
@@ -126,10 +104,11 @@ TEXTS = {
         "caption": "α = {alpha:.3f} | h = {h} cm | r₀ = {r0} μm | β = {beta} | Q_total = {q:.1f} L/min | μ = {mu:.5f} Pa·s",
         "info_text": "📌 Interpretation: At low pressures (< 12 mmHg), the lymphatic system can drain the fluid. Beyond the threshold, Kf grows exponentially and filtration exceeds lymphatic capacity.",
         "dynamic_title": "📈 Dynamic Ascites Prediction",
-        "dynamic_subtitle": "🔬 Dynamic Model (Differential Equation)",
-        "dynamic_desc": "Interstitial pressure (Pi) increases with fluid volume, causing gradual decrease in Jnet and saturation of ascites volume. Solved via Euler's method.",
+        "dynamic_subtitle": "🔬 Dynamic Model (Differential Equation with Saturation)",
+        "dynamic_desc": "Interstitial pressure (Pi) increases with fluid volume but is limited to Pi_max (saturation). This causes gradual decrease in Jnet and eventually re-acceleration of ascites volume. Solved via Euler's method.",
         "dynamic_time": "⏱️ Simulation Time (hours)",
         "dynamic_k_elastance": "📊 Tissue Elastance Coefficient (mmHg/mL)",
+        "dynamic_pi_max": "📊 Max Interstitial Pressure Pi_max (mmHg)",
         "dynamic_V0": "💧 Initial Ascites Volume (mL)",
         "dynamic_run": "🚀 Run Dynamic Simulation",
         "dynamic_success": "✅ Simulation for {time} hours completed successfully!",
@@ -140,12 +119,15 @@ TEXTS = {
         "dynamic_volume_title": "Dynamic Ascites Volume",
         "dynamic_jnet_title": "Jnet Changes Over Time",
         "dynamic_pi_title": "Interstitial Pressure (Pi) Changes Over Time",
+        "dynamic_flows_title": "Jv and Jlymph Changes Over Time",
         "dynamic_time_axis": "Time (hours)",
         "dynamic_volume_axis": "Ascites Volume (mL)",
         "dynamic_jnet_axis": "Jnet (ml/min)",
         "dynamic_pi_axis": "Pi (mmHg)",
+        "dynamic_flow_axis": "Flow (ml/min)",
         "dynamic_threshold": "Threshold 500 mL",
         "dynamic_equilibrium": "Equilibrium Point",
+        "dynamic_pi_max_line": "Pi_max",
         "dynamic_comparison": "📊 Comparison of Static and Dynamic Models",
         "dynamic_time_col": "Time",
         "dynamic_static_col": "Static Model (Linear)",
@@ -153,30 +135,21 @@ TEXTS = {
         "dynamic_1h": "1 hour",
         "dynamic_6h": "6 hours",
         "dynamic_24h": "24 hours",
-        "dynamic_interpretation": "📌 The static model assumes constant Jnet and gives unrealistic predictions. The dynamic model considers compensatory mechanisms and shows saturation.",
+        "dynamic_interpretation": "📌 The static model assumes constant Jnet. The dynamic model considers compensatory mechanisms and saturation of Pi, showing more realistic predictions.",
         "dynamic_loading": "⏳ Solving differential equation...",
+        "dynamic_phase_1": "Phase 1: Rapid accumulation",
+        "dynamic_phase_2": "Phase 2: Compensation (slowdown)",
+        "dynamic_phase_3": "Phase 3: Re-acceleration after Pi saturation",
         "clinical_expander": "📖 Complete Clinical Interpretation",
         "table_title": "📌 Clinical Ranges",
         "table_col1": "ΔP Range (mmHg)",
         "table_col2": "Status",
         "table_col3": "Ascites Risk",
         "table_col4": "Dominant Mechanism",
-        "row1_1": "< 8",
-        "row1_2": "Normal",
-        "row1_3": "🟢 Very Low",
-        "row1_4": "Starling Balance",
-        "row2_1": "8 – 12",
-        "row2_2": "Warning Zone",
-        "row2_3": "🟡 Slight",
-        "row2_4": "Onset of Kf Growth",
-        "row3_1": "12 – 16",
-        "row3_2": "Mild-Moderate HTN",
-        "row3_3": "🔴 Moderate",
-        "row3_4": "Hydraulic Breakdown",
-        "row4_1": "> 16",
-        "row4_2": "Severe HTN",
-        "row4_3": "🔴 High",
-        "row4_4": "Exponential Growth",
+        "row1_1": "< 8", "row1_2": "Normal", "row1_3": "🟢 Very Low", "row1_4": "Starling Balance",
+        "row2_1": "8 – 12", "row2_2": "Warning Zone", "row2_3": "🟡 Slight", "row2_4": "Onset of Kf Growth",
+        "row3_1": "12 – 16", "row3_2": "Mild-Moderate HTN", "row3_3": "🔴 Moderate", "row3_4": "Hydraulic Breakdown",
+        "row4_1": "> 16", "row4_2": "Severe HTN", "row4_3": "🔴 High", "row4_4": "Exponential Growth",
         "mechanisms_title": "🔬 Key Mechanisms",
         "mech1": "1. Hydraulic Breakdown at ΔP ≥ 12 mmHg",
         "mech2": "2. Clinical Threshold matches observations",
@@ -201,8 +174,9 @@ TEXTS = {
         "comp_casson": "Casson Model",
         "comp_lymph": "Lymphatic Drainage",
         "comp_dynamic": "Dynamic Model",
+        "comp_saturation": "Pi Saturation",
         "innovation_title": "**Main Innovation:**",
-        "innovation_text": "Combination of modified Bernoulli, Poiseuille with variable radius, Casson model, and Starling with nonlinear Kf and Pi.",
+        "innovation_text": "Combination of modified Bernoulli, Poiseuille with variable radius, Casson model, and Starling with nonlinear Kf and Pi, plus dynamic saturation model.",
         "sensitivity_title": "📊 Advanced Sensitivity Analysis",
         "sensitivity_subtitle": "Monte Carlo, Heatmap and Tornado Diagram",
         "sensitivity_1d": "📈 One-Dimensional",
@@ -216,49 +190,30 @@ TEXTS = {
         "sensitivity_monte_desc": "Uncertainty analysis with random simulations.",
         "sensitivity_report_desc": "Complete sensitivity analysis summary.",
         "select_param": "🔍 Select Parameter:",
-        "param_kf0": "Kf₀",
-        "param_sigma": "σ",
-        "param_pi0": "Pi₀",
-        "param_jmax": "Jmax",
-        "param_dpi": "Δπ",
-        "param_km": "Km",
-        "param_min": "min:",
-        "param_max": "max:",
+        "param_kf0": "Kf₀", "param_sigma": "σ", "param_pi0": "Pi₀",
+        "param_jmax": "Jmax", "param_dpi": "Δπ", "param_km": "Km",
+        "param_min": "min:", "param_max": "max:",
         "n_points": "Number of Points:",
         "fixed_deltaP": "ΔP (mmHg):",
         "output_type": "Output:",
-        "output_jv": "Jv",
-        "output_jnet": "Jnet",
-        "output_both": "Both",
+        "output_jv": "Jv", "output_jnet": "Jnet", "output_both": "Both",
         "run_analysis": "🚀 Run",
-        "param1": "First Parameter:",
-        "param2": "Second Parameter:",
+        "param1": "First Parameter:", "param2": "Second Parameter:",
         "heatmap_output": "Output:",
-        "heatmap_min": "Minimum",
-        "heatmap_max": "Maximum",
+        "heatmap_min": "Minimum", "heatmap_max": "Maximum",
         "tornado_output": "Output:",
         "mc_simulations": "Number of Simulations:",
         "mc_uncertainty": "Uncertainty Level:",
-        "mc_low": "Low (±5%)",
-        "mc_medium": "Medium (±15%)",
-        "mc_high": "High (±30%)",
-        "mc_mean": "Mean",
-        "mc_ci": "95% CI",
-        "mc_risk": "Ascites Risk",
+        "mc_low": "Low (±5%)", "mc_medium": "Medium (±15%)", "mc_high": "High (±30%)",
+        "mc_mean": "Mean", "mc_ci": "95% CI", "mc_risk": "Ascites Risk",
         "report_generate": "📊 Generate Report",
-        "report_param": "Parameter",
-        "report_base": "Base Value",
-        "report_min": "Jv_min",
-        "report_max": "Jv_max",
-        "report_sensitivity": "Sensitivity",
-        "report_status": "Status",
-        "status_low": "Low",
-        "status_medium": "Medium",
-        "status_high": "High",
+        "report_param": "Parameter", "report_base": "Base Value",
+        "report_min": "Jv_min", "report_max": "Jv_max",
+        "report_sensitivity": "Sensitivity", "report_status": "Status",
+        "status_low": "Low", "status_medium": "Medium", "status_high": "High",
         "download_csv": "📥 Download Report (CSV)",
         "nnn": "Prioritizing parameters",
-        "sens_jv": "Jv Sensitivity",
-        "sens_jnet": "Jnet Sensitivity",
+        "sens_jv": "Jv Sensitivity", "sens_jnet": "Jnet Sensitivity",
         "sens_range": "Range",
         "sens_effect": "Effect of {param} on Outputs",
         "sens_base": "Base Value",
@@ -275,46 +230,30 @@ TEXTS = {
         "bernoulli_2d": "🎯 Two-Dimensional",
         "bernoulli_report": "📊 Bernoulli Report",
         "bernoulli_desc": "Effect of hemodynamic parameters on α, pressure drop and flow.",
-        "param_qportal": "Q_portal",
-        "param_qartery": "Q_artery",
-        "param_aportal": "A_portal",
-        "param_ahepatic": "A_hepatic",
-        "param_h": "h",
-        "param_r0": "r₀",
-        "param_L": "L",
-        "param_beta": "β",
-        "param_mu": "u∞",
-        "param_tau": "ty",
-        "output_alpha": "α",
-        "output_dpsin": "ΔP_sin",
-        "output_dptotal": "ΔP_total",
-        "output_qtotal": "Q_total",
+        "param_qportal": "Q_portal", "param_qartery": "Q_artery",
+        "param_aportal": "A_portal", "param_ahepatic": "A_hepatic",
+        "param_h": "h", "param_r0": "r₀", "param_L": "L",
+        "param_beta": "β", "param_mu": "u∞", "param_tau": "ty",
+        "output_alpha": "α", "output_dpsin": "ΔP_sin",
+        "output_dptotal": "ΔP_total", "output_qtotal": "Q_total",
         "bernoulli_effect": "Effect of {param} on Hemodynamics",
         "bernoulli_heatmap": "Bernoulli Heatmap: {p1} vs {p2}",
         "bernoulli_report_title": "📊 Bernoulli Report",
         "bernoulli_sensitivity": "α Sensitivity",
-        "bernoulli_alpha_min": "α_min",
-        "bernoulli_alpha_max": "α_max",
-        "bernoulli_high": "High",
-        "bernoulli_low": "Low",
-        "bernoulli_medium": "Medium",
-        "sens_medium": "Medium",
-        "kahesh": "Decrease",
-        "afz": "Increase",
-        "cache_clear": "🗑️ Clear Cache",
-        "cache_cleared": "✅ Cache cleared!",
+        "bernoulli_alpha_min": "α_min", "bernoulli_alpha_max": "α_max",
+        "bernoulli_high": "High", "bernoulli_low": "Low", "bernoulli_medium": "Medium",
+        "sens_medium": "Medium", "kahesh": "Decrease", "afz": "Increase",
+        "cache_clear": "🗑️ Clear Cache", "cache_cleared": "✅ Cache cleared!",
         "reset_title": "🔄 Reset All Settings",
         "upload_csv": "📤 Upload Patient Data (CSV)",
         "upload_help": "CSV columns: ΔP, Kf0, sigma, Pi0, Jmax, Km, dPi",
         "upload_run": "🚀 Run Model",
-        "upload_status": "⚠️ Ascites Risk",
-        "upload_compensated": "✅ Compensated",
+        "upload_status": "⚠️ Ascites Risk", "upload_compensated": "✅ Compensated",
         "upload_download": "📥 Download Results",
         "upload_error": "❌ Error: {e}",
         "3d_title": "📊 Interactive 3D Plot",
         "3d_info": "Select two parameters for 3D visualization:",
-        "3d_param1": "Parameter 1 (X)",
-        "3d_param2": "Parameter 2 (Y)",
+        "3d_param1": "Parameter 1 (X)", "3d_param2": "Parameter 2 (Y)",
         "3d_plot": "🎲 Draw 3D Plot",
         "validation_warning_flow": "⚠️ Flow must be positive!",
         "validation_warning_area": "⚠️ Area must be greater than zero!",
@@ -326,80 +265,48 @@ TEXTS = {
         "app_subtitle": "بر اساس مقاله *شبیه‌سازی جریان خون در کبد بر اساس اصول و معادلات مکانیک سیالات*",
         "settings": "⚙️ تنظیمات",
         "mode_label": "حالت α",
-        "mode_auto": "🔄 خودکار",
-        "mode_manual": "✋ دستی",
+        "mode_auto": "🔄 خودکار", "mode_manual": "✋ دستی",
         "hemo_params": "پارامترهای همودینامیک",
-        "portal_flow": "دبی ورید باب (L/min)",
-        "artery_flow": "دبی سرخرگ کبدی (L/min)",
-        "portal_area": "سطح مقطع ورید باب (cm²)",
-        "hepatic_area": "سطح مقطع ورید فوق‌کبدی (cm²)",
+        "portal_flow": "دبی ورید باب (L/min)", "artery_flow": "دبی سرخرگ کبدی (L/min)",
+        "portal_area": "سطح مقطع ورید باب (cm²)", "hepatic_area": "سطح مقطع ورید فوق‌کبدی (cm²)",
         "height_diff": "اختلاف ارتفاع h (cm)",
         "sinusoid_params": "پارامترهای سینوزوئیدی",
-        "mu_inf": "u∞ (Pa·s)",
-        "tau_y": "ty (Pa)",
-        "r0": "r₀ (μm)",
-        "L": "L (μm)",
-        "beta": "β (ضریب مخروطی)",
+        "mu_inf": "u∞ (Pa·s)", "tau_y": "ty (Pa)", "r0": "r₀ (μm)",
+        "L": "L (μm)", "beta": "β (ضریب مخروطی)",
         "filtration_params": "پارامترهای تراوش",
-        "kf0": "Kf₀",
-        "sigma": "σ",
-        "pi0": "Pi₀ (mmHg)",
-        "dpi": "Δπ (mmHg)",
+        "kf0": "Kf₀", "sigma": "σ", "pi0": "Pi₀ (mmHg)", "dpi": "Δπ (mmHg)",
         "lymph_params": "پارامترهای لنفاوی",
-        "jmax": "Jmax (ml/min)",
-        "km": "Km (mmHg)",
-        "max_dp": "حداکثر ΔP (mmHg)",
-        "manual_alpha": "α (دستی)",
-        "P_hep": "فشار سیاهرگ فوق کبدی",
+        "jmax": "Jmax (ml/min)", "km": "Km (mmHg)", "max_dp": "حداکثر ΔP (mmHg)",
+        "manual_alpha": "α (دستی)", "P_hep": "فشار سیاهرگ فوق کبدی",
         "calc_details": "📊 جزئیات محاسبات",
-        "total_flow": "دبی کل",
-        "portal_vel": "سرعت ورید باب",
+        "total_flow": "دبی کل", "portal_vel": "سرعت ورید باب",
         "hepatic_vel": "سرعت ورید فوق‌کبدی",
-        "sinusoid_drop": "افت سینوزوئیدی",
-        "height_drop": "افت ارتفاع",
-        "kinetic_drop": "افت جنبشی",
-        "total_drop": "کل افت",
-        "alpha": "α",
-        "shear_rate": "نرخ برش",
-        "mu_app": "u ظاهری",
-        "dp_total": "ΔP کل",
-        "auto_results": "📊 نتایج خودکار",
-        "manual_results": "📊 نتایج دستی",
-        "deltaP": "ΔP",
-        "kf_eff": "Kf",
-        "pi_eff": "Pi",
-        "jv": "Jv",
-        "jnet": "Jnet",
-        "jlymph": "Jlymph (ml/min)",
+        "sinusoid_drop": "افت سینوزوئیدی", "height_drop": "افت ارتفاع",
+        "kinetic_drop": "افت جنبشی", "total_drop": "کل افت",
+        "alpha": "α", "shear_rate": "نرخ برش", "mu_app": "u ظاهری", "dp_total": "ΔP کل",
+        "auto_results": "📊 نتایج خودکار", "manual_results": "📊 نتایج دستی",
+        "deltaP": "ΔP", "kf_eff": "Kf", "pi_eff": "Pi", "jv": "Jv",
+        "jnet": "Jnet", "jlymph": "Jlymph (ml/min)",
         "clinical_title": "🏥 تفسیر بالینی (ΔP = {dp:.2f} mmHg)",
-        "status": "وضعیت",
-        "fluid_status": "وضعیت مایعات",
-        "ascites_pred": "پیش‌بینی آسیت",
-        "key_values": "📊 مقادیر کلیدی",
-        "dp_mmHg": "ΔP (mmHg)",
+        "status": "وضعیت", "fluid_status": "وضعیت مایعات", "ascites_pred": "پیش‌بینی آسیت",
+        "key_values": "📊 مقادیر کلیدی", "dp_mmHg": "ΔP (mmHg)",
         "filtration_curves": "📊 منحنی‌های تراوش",
-        "jv_curve": "Jv (تراوش)",
-        "jlymph_curve": "Jlymph (لنفاوی)",
-        "jnet_curve": "Jnet (خالص)",
-        "zero_line": "J = 0",
-        "threshold_line": "آستانه ۱۲ mmHg",
+        "jv_curve": "Jv (تراوش)", "jlymph_curve": "Jlymph (لنفاوی)", "jnet_curve": "Jnet (خالص)",
+        "zero_line": "J = 0", "threshold_line": "آستانه ۱۲ mmHg",
         "curves_title": "📊 منحنی‌های تراوش، تخلیه لنفاوی و تجمع خالص",
-        "xaxis_dp": "ΔP (mmHg)",
-        "yaxis_flow": "نرخ جریان (ml/min)",
+        "xaxis_dp": "ΔP (mmHg)", "yaxis_flow": "نرخ جریان (ml/min)",
         "nonlinear_behavior": "📊 رفتار غیرخطی",
-        "kf_title": "ضریب فیلتراسیون غیرخطی Kf",
-        "kf_yaxis": "Kf (ml/min/mmHg)",
-        "pi_title": "فشار میان‌بافتی غیرخطی Pi",
-        "pi_yaxis": "Pi (mmHg)",
-        "key_points": "📊 مقادیر کلیدی",
-        "clinical_interpretation": "🏥 تفسیر بالینی",
+        "kf_title": "ضریب فیلتراسیون غیرخطی Kf", "kf_yaxis": "Kf (ml/min/mmHg)",
+        "pi_title": "فشار میان‌بافتی غیرخطی Pi", "pi_yaxis": "Pi (mmHg)",
+        "key_points": "📊 مقادیر کلیدی", "clinical_interpretation": "🏥 تفسیر بالینی",
         "caption": "α = {alpha:.3f} | h = {h} cm | r₀ = {r0} μm | β = {beta} | Q_total = {q:.1f} L/min | μ = {mu:.5f} Pa·s",
         "info_text": "📌 در فشارهای پایین (< ۱۲ mmHg)، سیستم لنفاوی قادر به تخلیه است. پس از آستانه، Kf نمایی رشد کرده و تراوش از ظرفیت لنفاوی سبقت می‌گیرد.",
         "dynamic_title": "📈 پیش‌بینی دینامیک حجم آسیت",
-        "dynamic_subtitle": "🔬 مدل دینامیک (معادله دیفرانسیل)",
-        "dynamic_desc": "در این مدل، فشار میان‌بافتی (Pi) با حجم مایع افزایش می‌یابد و باعث کاهش تدریجی Jnet و اشباع حجم آسیت می‌شود. حل با روش اویلر.",
+        "dynamic_subtitle": "🔬 مدل دینامیک (معادله دیفرانسیل با اشباع)",
+        "dynamic_desc": "در این مدل، فشار میان‌بافتی (Pi) با حجم افزایش می‌یابد اما به Pi_max محدود می‌شود. این محدودیت باعث کاهش تدریجی Jnet و سپس رشد دوباره حجم می‌شود. حل با روش اویلر.",
         "dynamic_time": "⏱️ مدت زمان شبیه‌سازی (ساعت)",
         "dynamic_k_elastance": "📊 ضریب الاستانس بافت (mmHg/mL)",
+        "dynamic_pi_max": "📊 حداکثر فشار بین‌بافتی Pi_max (mmHg)",
         "dynamic_V0": "💧 حجم اولیه آسیت (mL)",
         "dynamic_run": "🚀 شبیه‌سازی دینامیک",
         "dynamic_success": "✅ شبیه‌سازی برای {time} ساعت انجام شد!",
@@ -410,43 +317,33 @@ TEXTS = {
         "dynamic_volume_title": "دینامیک حجم آسیت",
         "dynamic_jnet_title": "تغییرات Jnet در طول زمان",
         "dynamic_pi_title": "تغییرات فشار میان‌بافتی (Pi)",
+        "dynamic_flows_title": "تغییرات Jv و Jlymph در طول زمان",
         "dynamic_time_axis": "زمان (ساعت)",
         "dynamic_volume_axis": "حجم آسیت (mL)",
         "dynamic_jnet_axis": "Jnet (ml/min)",
         "dynamic_pi_axis": "Pi (mmHg)",
+        "dynamic_flow_axis": "جریان (ml/min)",
         "dynamic_threshold": "آستانه ۵۰۰ mL",
         "dynamic_equilibrium": "نقطه تعادل",
+        "dynamic_pi_max_line": "Pi_max",
         "dynamic_comparison": "📊 مقایسه مدل استاتیک و دینامیک",
         "dynamic_time_col": "زمان",
         "dynamic_static_col": "مدل استاتیک (خطی)",
         "dynamic_dynamic_col": "مدل دینامیک (غیرخطی)",
-        "dynamic_1h": "۱ ساعت",
-        "dynamic_6h": "۶ ساعت",
-        "dynamic_24h": "۲۴ ساعت",
-        "dynamic_interpretation": "📌 مدل استاتیک پیش‌بینی‌های غیرواقعی می‌دهد. مدل دینامیک با در نظر گرفتن مکانیسم‌های جبرانی، پیش‌بینی واقع‌بینانه‌تری دارد.",
+        "dynamic_1h": "۱ ساعت", "dynamic_6h": "۶ ساعت", "dynamic_24h": "۲۴ ساعت",
+        "dynamic_interpretation": "📌 مدل استاتیک پیش‌بینی‌های غیرواقعی می‌دهد. مدل دینامیک با در نظر گرفتن مکانیسم‌های جبرانی و اشباع Pi، پیش‌بینی واقع‌بینانه‌تری دارد.",
         "dynamic_loading": "⏳ در حال حل معادله دیفرانسیل...",
+        "dynamic_phase_1": "فاز ۱: تجمع سریع",
+        "dynamic_phase_2": "فاز ۲: جبران (کندی)",
+        "dynamic_phase_3": "فاز ۳: رشد دوباره پس از اشباع Pi",
         "clinical_expander": "📖 تفسیر بالینی کامل",
         "table_title": "📌 محدوده‌های بالینی",
-        "table_col1": "محدوده ΔP (mmHg)",
-        "table_col2": "وضعیت",
-        "table_col3": "خطر آسیت",
-        "table_col4": "مکانیسم غالب",
-        "row1_1": "< ۸",
-        "row1_2": "طبیعی",
-        "row1_3": "🟢 بسیار کم",
-        "row1_4": "تعادل استارلینگ",
-        "row2_1": "۸ – ۱۲",
-        "row2_2": "مرز هشدار",
-        "row2_3": "🟡 جزئی",
-        "row2_4": "شروع رشد Kf",
-        "row3_1": "۱۲ – ۱۶",
-        "row3_2": "پرفشاری خفیف-متوسط",
-        "row3_3": "🔴 متوسط",
-        "row3_4": "شکست هیدرولیکی",
-        "row4_1": "> ۱۶",
-        "row4_2": "پرفشاری شدید",
-        "row4_3": "🔴 بالا",
-        "row4_4": "رشد نمایی",
+        "table_col1": "محدوده ΔP (mmHg)", "table_col2": "وضعیت",
+        "table_col3": "خطر آسیت", "table_col4": "مکانیسم غالب",
+        "row1_1": "< ۸", "row1_2": "طبیعی", "row1_3": "🟢 بسیار کم", "row1_4": "تعادل استارلینگ",
+        "row2_1": "۸ – ۱۲", "row2_2": "مرز هشدار", "row2_3": "🟡 جزئی", "row2_4": "شروع رشد Kf",
+        "row3_1": "۱۲ – ۱۶", "row3_2": "پرفشاری خفیف-متوسط", "row3_3": "🔴 متوسط", "row3_4": "شکست هیدرولیکی",
+        "row4_1": "> ۱۶", "row4_2": "پرفشاری شدید", "row4_3": "🔴 بالا", "row4_4": "رشد نمایی",
         "mechanisms_title": "🔬 مکانیسم‌های کلیدی",
         "mech1": "1. شکست هیدرولیکی در ΔP ≥ ۱۲ mmHg",
         "mech2": "2. آستانه بالینی ۱۲ mmHg",
@@ -471,14 +368,13 @@ TEXTS = {
         "comp_casson": "مدل کاسون",
         "comp_lymph": "تخلیه لنفاوی",
         "comp_dynamic": "مدل دینامیک",
+        "comp_saturation": "اشباع Pi",
         "innovation_title": "**نوآوری اصلی:**",
-        "innovation_text": "ترکیب برنولی اصلاح‌شده، پوازوی با شعاع متغیر، مدل کاسون، و استارلینگ با Kf و Pi غیرخطی.",
+        "innovation_text": "ترکیب برنولی اصلاح‌شده، پوازوی با شعاع متغیر، مدل کاسون، استارلینگ با Kf و Pi غیرخطی، و مدل دینامیک با اشباع Pi.",
         "sensitivity_title": "📊 تحلیل حساسیت پیشرفته",
         "sensitivity_subtitle": "Monte Carlo، Heatmap و Tornado Diagram",
-        "sensitivity_1d": "📈 یک‌بعدی",
-        "sensitivity_2d": "🎯 دو‌بعدی",
-        "sensitivity_tornado": "🌪️ Tornado",
-        "sensitivity_monte": "🎲 Monte Carlo",
+        "sensitivity_1d": "📈 یک‌بعدی", "sensitivity_2d": "🎯 دو‌بعدی",
+        "sensitivity_tornado": "🌪️ Tornado", "sensitivity_monte": "🎲 Monte Carlo",
         "sensitivity_report": "📊 گزارش جامع",
         "sensitivity_1d_desc": "تأثیر یک پارامتر بر خروجی‌ها.",
         "sensitivity_2d_desc": "تأثیر هم‌زمان دو پارامتر.",
@@ -486,49 +382,30 @@ TEXTS = {
         "sensitivity_monte_desc": "تحلیل عدم‌قطعیت.",
         "sensitivity_report_desc": "خلاصه کامل تحلیل حساسیت.",
         "select_param": "🔍 انتخاب پارامتر:",
-        "param_kf0": "Kf₀",
-        "param_sigma": "σ",
-        "param_pi0": "Pi₀",
-        "param_jmax": "Jmax",
-        "param_dpi": "Δπ",
-        "param_km": "Km",
-        "param_min": "min:",
-        "param_max": "max:",
+        "param_kf0": "Kf₀", "param_sigma": "σ", "param_pi0": "Pi₀",
+        "param_jmax": "Jmax", "param_dpi": "Δπ", "param_km": "Km",
+        "param_min": "min:", "param_max": "max:",
         "n_points": "تعداد نقاط:",
         "fixed_deltaP": "فشار ΔP (mmHg):",
         "output_type": "خروجی:",
-        "output_jv": "Jv",
-        "output_jnet": "Jnet",
-        "output_both": "هر دو",
+        "output_jv": "Jv", "output_jnet": "Jnet", "output_both": "هر دو",
         "run_analysis": "🚀 اجرا",
-        "param1": "پارامتر اول:",
-        "param2": "پارامتر دوم:",
+        "param1": "پارامتر اول:", "param2": "پارامتر دوم:",
         "heatmap_output": "خروجی:",
-        "heatmap_min": "حداقل",
-        "heatmap_max": "حداکثر",
+        "heatmap_min": "حداقل", "heatmap_max": "حداکثر",
         "tornado_output": "خروجی:",
         "mc_simulations": "تعداد شبیه‌سازی:",
         "mc_uncertainty": "سطح عدم‌قطعیت:",
-        "mc_low": "کم (±5%)",
-        "mc_medium": "متوسط (±15%)",
-        "mc_high": "زیاد (±30%)",
-        "mc_mean": "میانگین",
-        "mc_ci": "فاصله اطمینان 95%",
-        "mc_risk": "خطر آسیت",
+        "mc_low": "کم (±5%)", "mc_medium": "متوسط (±15%)", "mc_high": "زیاد (±30%)",
+        "mc_mean": "میانگین", "mc_ci": "فاصله اطمینان 95%", "mc_risk": "خطر آسیت",
         "report_generate": "📊 تولید گزارش",
-        "report_param": "پارامتر",
-        "report_base": "مقدار پایه",
-        "report_min": "Jv_min",
-        "report_max": "Jv_max",
-        "report_sensitivity": "حساسیت",
-        "report_status": "وضعیت",
-        "status_low": "پایین",
-        "status_medium": "متوسط",
-        "status_high": "بالا",
+        "report_param": "پارامتر", "report_base": "مقدار پایه",
+        "report_min": "Jv_min", "report_max": "Jv_max",
+        "report_sensitivity": "حساسیت", "report_status": "وضعیت",
+        "status_low": "پایین", "status_medium": "متوسط", "status_high": "بالا",
         "download_csv": "📥 دانلود گزارش (CSV)",
         "nnn": "اولویت‌بندی پارامترها",
-        "sens_jv": "حساسیت Jv",
-        "sens_jnet": "حساسیت Jnet",
+        "sens_jv": "حساسیت Jv", "sens_jnet": "حساسیت Jnet",
         "sens_range": "محدوده",
         "sens_effect": "تأثیر {param} بر خروجی‌ها",
         "sens_base": "مقدار پایه",
@@ -541,50 +418,33 @@ TEXTS = {
         "sens_anz2": "مقایسه تحلیل حساسیت",
         "bernoulli_title": "⚡ تحلیل حساسیت برنولی",
         "bernoulli_subtitle": "تأثیر پارامترهای همودینامیک بر α و افت فشار",
-        "bernoulli_1d": "📈 یک‌بعدی",
-        "bernoulli_2d": "🎯 دو‌بعدی",
+        "bernoulli_1d": "📈 یک‌بعدی", "bernoulli_2d": "🎯 دو‌بعدی",
         "bernoulli_report": "📊 گزارش برنولی",
         "bernoulli_desc": "تأثیر پارامترهای همودینامیک بر α، افت فشار و دبی.",
-        "param_qportal": "Q_portal",
-        "param_qartery": "Q_artery",
-        "param_aportal": "A_portal",
-        "param_ahepatic": "A_hepatic",
-        "param_h": "h",
-        "param_r0": "r₀",
-        "param_L": "L",
-        "param_beta": "β",
-        "param_mu": "u∞",
-        "param_tau": "ty",
-        "output_alpha": "α",
-        "output_dpsin": "ΔP_sin",
-        "output_dptotal": "ΔP_total",
-        "output_qtotal": "Q_total",
+        "param_qportal": "Q_portal", "param_qartery": "Q_artery",
+        "param_aportal": "A_portal", "param_ahepatic": "A_hepatic",
+        "param_h": "h", "param_r0": "r₀", "param_L": "L",
+        "param_beta": "β", "param_mu": "u∞", "param_tau": "ty",
+        "output_alpha": "α", "output_dpsin": "ΔP_sin",
+        "output_dptotal": "ΔP_total", "output_qtotal": "Q_total",
         "bernoulli_effect": "تأثیر {param} بر همودینامیک",
         "bernoulli_heatmap": "Heatmap برنولی: {p1} vs {p2}",
         "bernoulli_report_title": "📊 گزارش برنولی",
         "bernoulli_sensitivity": "حساسیت α",
-        "bernoulli_alpha_min": "α min",
-        "bernoulli_alpha_max": "α max",
-        "bernoulli_high": "زیاد",
-        "bernoulli_low": "کم",
-        "bernoulli_medium": "متوسط",
-        "sens_medium": "متوسط",
-        "kahesh": "کاهش",
-        "afz": "افزایش",
-        "cache_clear": "🗑️ پاک‌سازی کش",
-        "cache_cleared": "✅ کش پاک شد!",
+        "bernoulli_alpha_min": "α min", "bernoulli_alpha_max": "α max",
+        "bernoulli_high": "زیاد", "bernoulli_low": "کم", "bernoulli_medium": "متوسط",
+        "sens_medium": "متوسط", "kahesh": "کاهش", "afz": "افزایش",
+        "cache_clear": "🗑️ پاک‌سازی کش", "cache_cleared": "✅ کش پاک شد!",
         "reset_title": "🔄 بازنشانی تنظیمات",
         "upload_csv": "📤 بارگذاری داده بیمار (CSV)",
         "upload_help": "ستون‌ها: ΔP, Kf0, sigma, Pi0, Jmax, Km, dPi",
         "upload_run": "🚀 اجرای مدل",
-        "upload_status": "⚠️ خطر آسیت",
-        "upload_compensated": "✅ جبران‌شده",
+        "upload_status": "⚠️ خطر آسیت", "upload_compensated": "✅ جبران‌شده",
         "upload_download": "📥 دانلود نتایج",
         "upload_error": "❌ خطا: {e}",
         "3d_title": "📊 نمودار سه‌بعدی تعاملی",
         "3d_info": "دو پارامتر را برای نمایش سه‌بعدی انتخاب کنید:",
-        "3d_param1": "پارامتر اول (X)",
-        "3d_param2": "پارامتر دوم (Y)",
+        "3d_param1": "پارامتر اول (X)", "3d_param2": "پارامتر دوم (Y)",
         "3d_plot": "🎲 رسم نمودار ۳D",
         "validation_warning_flow": "⚠️ دبی باید مثبت باشد!",
         "validation_warning_area": "⚠️ سطح مقطع باید بزرگتر از صفر باشد!",
@@ -594,7 +454,7 @@ TEXTS = {
 }
 
 # ============================================================
-# Language Management
+# Language
 # ============================================================
 if "lang" not in st.session_state:
     st.session_state.lang = "fa"
@@ -606,6 +466,28 @@ def set_lang_en():
 def set_lang_fa():
     st.session_state.lang = "fa"
     st.rerun()
+
+# ============================================================
+# Intro
+# ============================================================
+if "first_run" not in st.session_state:
+    st.session_state.first_run = True
+
+if st.session_state.first_run:
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        st.markdown("""
+        <div style="text-align: center; padding: 50px 0;">
+            <h1 style="font-size: 60px;">🩸</h1>
+            <h1 style="font-size: 40px; color: #ff4b4b;">Hepatic Hemodynamics Simulator</h1>
+            <h3 style="color: #666;">شبیه‌ساز همودینامیک کبد</h3>
+            <p style="color: #999; font-size: 14px;">Version 4.0 - Dynamic Ascites Model with Saturation</p>
+        </div>
+        """, unsafe_allow_html=True)
+        if st.button("Enter 🚀", use_container_width=True):
+            st.session_state.first_run = False
+            st.rerun()
+    st.stop()
 
 # ============================================================
 # Sidebar
@@ -644,7 +526,6 @@ with st.sidebar:
     mode = st.radio(t["mode_label"], [t["mode_manual"], t["mode_auto"]])
     
     st.header(t["hemo_params"])
-    
     if mode == t["mode_manual"]:
         alpha = st.slider(t["manual_alpha"], 0.20, 0.95, 0.54, 0.01)
     else:
@@ -770,6 +651,7 @@ else:
     clinical = get_clinical_interpretation(deltaP_analysis, Jv, Jnet, lang=lang)
     st.info(f"ΔP = {deltaP_analysis:.2f} mmHg | {clinical['status']} | {clinical['ascites_prediction']}")
     
+    # Filtration Curves
     st.subheader(t["filtration_curves"])
     deltaP_range = np.linspace(0, max_deltaP, 300)
     Jv_list, Kf_list, Pi_list, Jlymph_list, Jnet_list = [], [], [], [], []
@@ -789,24 +671,28 @@ else:
     fig.add_trace(go.Scatter(x=deltaP_range, y=Jnet_list, mode='lines', name=t["jnet_curve"], line=dict(color='red', width=3, dash='dot'), fill='tozeroy', fillcolor='rgba(255,0,0,0.1)'))
     fig.add_hline(y=0, line_dash='dot', line_color='gray', annotation_text=t["zero_line"])
     fig.add_vline(x=12, line_dash='dot', line_color='red', annotation_text=t["threshold_line"])
-    fig.update_layout(title=t["curves_title"], xaxis_title=t["xaxis_dp"], yaxis_title=t["yaxis_flow"], template=get_plotly_template(), height=500)
+    fig.update_layout(title=t["curves_title"], xaxis_title=t["xaxis_dp"], yaxis_title=t["yaxis_flow"], template=get_plotly_template(), height=500, hovermode='x unified')
     st.plotly_chart(fig, use_container_width=True)
     
+    # Kf & Pi Curves
     st.subheader(t["nonlinear_behavior"])
     col1, col2 = st.columns(2)
     with col1:
         fig_kf = go.Figure()
         fig_kf.add_trace(go.Scatter(x=deltaP_range, y=Kf_list, mode='lines', name=t["kf_eff"], line=dict(color='purple', width=3)))
+        fig_kf.add_hline(y=Kf0, line_dash='dot', line_color='gray')
         fig_kf.add_vline(x=12, line_dash='dot', line_color='red')
         fig_kf.update_layout(title=t["kf_title"], xaxis_title=t["xaxis_dp"], yaxis_title=t["kf_yaxis"], template=get_plotly_template(), height=350)
         st.plotly_chart(fig_kf, use_container_width=True)
     with col2:
         fig_pi = go.Figure()
         fig_pi.add_trace(go.Scatter(x=deltaP_range, y=Pi_list, mode='lines', name=t["pi_eff"], line=dict(color='orange', width=3)))
+        fig_pi.add_hline(y=Pi0, line_dash='dot', line_color='gray')
         fig_pi.add_vline(x=12, line_dash='dot', line_color='red')
         fig_pi.update_layout(title=t["pi_title"], xaxis_title=t["xaxis_dp"], yaxis_title=t["pi_yaxis"], template=get_plotly_template(), height=350)
         st.plotly_chart(fig_pi, use_container_width=True)
     
+    # Key Values Table
     st.subheader(t["key_points"])
     key_points = [4, 8, 12, 16, 20]
     data = []
@@ -825,6 +711,27 @@ else:
     df = pd.DataFrame(data)
     st.dataframe(df.style.map(color_jnet, subset=[t["jnet"]]), use_container_width=True, hide_index=True)
     
+    # Clinical Cards
+    st.subheader(t["clinical_interpretation"])
+    cols = st.columns(3)
+    for i, dp in enumerate([8, 12, 16]):
+        idx = int(dp / max_deltaP * len(deltaP_range))
+        if idx >= len(deltaP_range):
+            idx = len(deltaP_range) - 1
+        clinical = get_clinical_interpretation(dp, Jv_list[idx], Jnet_list[idx], lang=lang)
+        with cols[i]:
+            color_bg = '#d4edda' if clinical['status'] in [t["row1_2"], "طبیعی"] else '#fff3cd' if clinical['status'] in [t["row2_2"], "مرز هشدار"] else '#f8d7da'
+            st.markdown(f"""
+            <div style="background-color: {color_bg}; padding: 15px; border-radius: 10px; margin: 5px 0; border: 1px solid #ddd;">
+                <h4 style="margin: 0; text-align: center;">{clinical['color']} ΔP = {dp} mmHg</h4>
+                <hr style="margin: 10px 0;">
+                <b>{t['status']}:</b> {clinical['status']}<br>
+                <b>{t['jv']}:</b> {Jv_list[idx]:.2f} ml/min<br>
+                <b>{t['jnet']}:</b> {Jnet_list[idx]:.2f} ml/min<br>
+                <b>{clinical['ascites_prediction']}</b>
+            </div>
+            """, unsafe_allow_html=True)
+    
     st.caption(t["caption"].format(alpha=alpha, h=h_cm, r0=r0_um, beta=beta, q=(Q_total * 1000 * 60), mu=mu_app))
     st.info(t["info_text"])
     
@@ -841,21 +748,23 @@ else:
     </div>
     """, unsafe_allow_html=True)
     
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     with col1:
         time_hours = st.slider(t["dynamic_time"], 1, 72, 24, 1)
     with col2:
         k_elastance = st.slider(t["dynamic_k_elastance"], 0.0001, 0.01, 0.001, 0.0001, format="%.4f")
     with col3:
+        Pi_max = st.slider(t["dynamic_pi_max"], 2.0, 15.0, 10.0, 0.5)
+    with col4:
         V0 = st.number_input(t["dynamic_V0"], 0, 1000, 0, 10)
     
     if st.button(t["dynamic_run"], use_container_width=True, type="primary"):
         with st.spinner(t["dynamic_loading"]):
-            time_array, V_array, Jnet_array, Pi_array = predict_ascites_volume_dynamic(
+            time_array, V_array, Jnet_array, Pi_array, Jv_array, Jlymph_array = predict_ascites_volume_dynamic(
                 Kf=Kf, alpha=alpha, sigma=sigma, dpi=dPi,
                 P_hepatic=P_hep, Pi0=Pi0, k_elastance=k_elastance,
                 Jmax=Jmax, Km=Km, deltaP=deltaP_analysis,
-                time_hours=time_hours, V0=V0, dt=0.01
+                time_hours=time_hours, V0=V0, dt=0.01, Pi_max=Pi_max
             )
         
         st.success(t["dynamic_success"].format(time=time_hours))
@@ -874,23 +783,67 @@ else:
             else:
                 st.metric(t["dynamic_jnet_reduction"], "0%")
         
+        # Plot 1: Ascites Volume
         fig_V = go.Figure()
-        fig_V.add_trace(go.Scatter(x=time_array, y=V_array, mode='lines', name=t["dynamic_volume_title"], line=dict(color='#ff4b4b', width=3), fill='tozeroy', fillcolor='rgba(255,75,75,0.1)'))
-        fig_V.add_hline(y=500, line_dash='dash', line_color='orange', annotation_text=t["dynamic_threshold"])
-        fig_V.update_layout(title=f'<b>{t["dynamic_volume_title"]}</b>', xaxis_title=t["dynamic_time_axis"], yaxis_title=t["dynamic_volume_axis"], template=get_plotly_template(), height=400)
+        fig_V.add_trace(go.Scatter(x=time_array, y=V_array, mode='lines',
+                                   name=t["dynamic_volume_title"],
+                                   line=dict(color='#ff4b4b', width=3),
+                                   fill='tozeroy', fillcolor='rgba(255,75,75,0.1)'))
+        fig_V.add_hline(y=500, line_dash='dash', line_color='orange',
+                        annotation_text=t["dynamic_threshold"], annotation_position='top right')
+        fig_V.update_layout(title=f'<b>{t["dynamic_volume_title"]}</b>',
+                            xaxis_title=t["dynamic_time_axis"],
+                            yaxis_title=t["dynamic_volume_axis"],
+                            template=get_plotly_template(), height=400, hovermode='x unified')
         st.plotly_chart(fig_V, use_container_width=True)
         
+        # Plot 2: Jnet
         fig_Jnet = go.Figure()
-        fig_Jnet.add_trace(go.Scatter(x=time_array, y=Jnet_array, mode='lines', name='Jnet', line=dict(color='#7c3aed', width=3)))
-        fig_Jnet.add_hline(y=0, line_dash='dot', line_color='gray', annotation_text=t["dynamic_equilibrium"])
-        fig_Jnet.update_layout(title=f'<b>{t["dynamic_jnet_title"]}</b>', xaxis_title=t["dynamic_time_axis"], yaxis_title=t["dynamic_jnet_axis"], template=get_plotly_template(), height=400)
+        fig_Jnet.add_trace(go.Scatter(x=time_array, y=Jnet_array, mode='lines',
+                                      name='Jnet', line=dict(color='#7c3aed', width=3)))
+        fig_Jnet.add_hline(y=0, line_dash='dot', line_color='gray',
+                           annotation_text=t["dynamic_equilibrium"], annotation_position='bottom right')
+        fig_Jnet.update_layout(title=f'<b>{t["dynamic_jnet_title"]}</b>',
+                               xaxis_title=t["dynamic_time_axis"],
+                               yaxis_title=t["dynamic_jnet_axis"],
+                               template=get_plotly_template(), height=400, hovermode='x unified')
         st.plotly_chart(fig_Jnet, use_container_width=True)
         
+        # Plot 3: Pi with Pi_max line
         fig_Pi = go.Figure()
-        fig_Pi.add_trace(go.Scatter(x=time_array, y=Pi_array, mode='lines', name='Pi', line=dict(color='#f9a825', width=3)))
-        fig_Pi.update_layout(title=f'<b>{t["dynamic_pi_title"]}</b>', xaxis_title=t["dynamic_time_axis"], yaxis_title=t["dynamic_pi_axis"], template=get_plotly_template(), height=400)
+        fig_Pi.add_trace(go.Scatter(x=time_array, y=Pi_array, mode='lines',
+                                    name='Pi', line=dict(color='#f9a825', width=3)))
+        fig_Pi.add_hline(y=Pi_max, line_dash='dash', line_color='red',
+                         annotation_text=t["dynamic_pi_max_line"], annotation_position='top right')
+        fig_Pi.update_layout(title=f'<b>{t["dynamic_pi_title"]}</b>',
+                             xaxis_title=t["dynamic_time_axis"],
+                             yaxis_title=t["dynamic_pi_axis"],
+                             template=get_plotly_template(), height=400, hovermode='x unified')
         st.plotly_chart(fig_Pi, use_container_width=True)
         
+        # Plot 4: Jv and Jlymph
+        fig_flows = go.Figure()
+        fig_flows.add_trace(go.Scatter(x=time_array, y=Jv_array, mode='lines',
+                                       name='Jv (Filtration)', line=dict(color='blue', width=3)))
+        fig_flows.add_trace(go.Scatter(x=time_array, y=Jlymph_array, mode='lines',
+                                       name='Jlymph (Lymphatic)', line=dict(color='green', width=3, dash='dash')))
+        fig_flows.update_layout(title=f'<b>{t["dynamic_flows_title"]}</b>',
+                                xaxis_title=t["dynamic_time_axis"],
+                                yaxis_title=t["dynamic_flow_axis"],
+                                template=get_plotly_template(), height=400, hovermode='x unified')
+        st.plotly_chart(fig_flows, use_container_width=True)
+        
+        # Phase Analysis
+        st.subheader("📊 فازهای دینامیک آسیت")
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.info(t["dynamic_phase_1"])
+        with col2:
+            st.warning(t["dynamic_phase_2"])
+        with col3:
+            st.error(t["dynamic_phase_3"])
+        
+        # Comparison Table
         st.subheader(t["dynamic_comparison"])
         V_static_1h = Jnet_array[0] * 60
         V_static_6h = Jnet_array[0] * 360
@@ -909,6 +862,9 @@ else:
         st.dataframe(df_comparison, use_container_width=True, hide_index=True)
         st.info(t["dynamic_interpretation"])
 
+# ============================================================
+# Clinical Expander
+# ============================================================
 with st.expander(t["clinical_expander"], expanded=False):
     st.markdown(f"""
     ### {t["table_title"]}
@@ -942,7 +898,6 @@ with st.expander(t["bernoulli_title"], expanded=False):
         t["param_h"]: "h", t["param_r0"]: "r0", t["param_L"]: "L",
         t["param_beta"]: "beta", t["param_mu"]: "mu_inf", t["param_tau"]: "tau_y"
     }
-    
     bernoulli_ranges = {
         "Q_portal": (1.0, 1.3, 1.1, 0.05), "Q_artery": (0.1, 0.6, 0.35, 0.05),
         "A_portal": (0.5, 3.0, 1.1, 0.1), "A_hepatic": (0.3, 1.2, 0.6, 0.1),
@@ -993,7 +948,7 @@ with st.expander(t["bernoulli_title"], expanded=False):
                 elif b_output_type == t["output_qtotal"]:
                     fig_b.add_trace(go.Scatter(x=b_param_range, y=Q_total_vals, mode='lines+markers', name=t["output_qtotal"], line=dict(color='#f9a825', width=3)))
                 fig_b.add_vline(x=default_val, line_dash='dash', line_color='orange')
-                fig_b.update_layout(title=t["bernoulli_effect"].format(param=selected_bparam), xaxis_title=selected_bparam, yaxis_title=t["param12"], template=get_plotly_template(), height=450)
+                fig_b.update_layout(title=t["bernoulli_effect"].format(param=selected_bparam), xaxis_title=selected_bparam, yaxis_title="Value", template=get_plotly_template(), height=450)
                 st.plotly_chart(fig_b, use_container_width=True)
     
     with btab2:
@@ -1164,17 +1119,17 @@ with st.expander(t["sensitivity_title"], expanded=False):
                 Jnet = Jv - Jlymph
                 base = Jnet if output_tornado == "Jnet" else Jv
                 temp_params[name] = min_v
-                Kf = calc_Kf_nonlinear(temp_params['Kf0'], dp_tornado)
-                Pi = calc_Pi_nonlinear(temp_params['Pi0'], dp_tornado)
-                Jv_min = calc_Jv(dp_tornado, Kf, temp_params['alpha'], temp_params['sigma'], Pi, temp_params['dPi'], P_hep)
-                Jlymph_min = calc_Jlymph(temp_params['Jmax'], temp_params['Km'], Pi)
+                Kf_min = calc_Kf_nonlinear(temp_params['Kf0'], dp_tornado)
+                Pi_min = calc_Pi_nonlinear(temp_params['Pi0'], dp_tornado)
+                Jv_min = calc_Jv(dp_tornado, Kf_min, temp_params['alpha'], temp_params['sigma'], Pi_min, temp_params['dPi'], P_hep)
+                Jlymph_min = calc_Jlymph(temp_params['Jmax'], temp_params['Km'], Pi_min)
                 Jnet_min = Jv_min - Jlymph_min
                 val_min = Jnet_min if output_tornado == "Jnet" else Jv_min
                 temp_params[name] = max_v
-                Kf = calc_Kf_nonlinear(temp_params['Kf0'], dp_tornado)
-                Pi = calc_Pi_nonlinear(temp_params['Pi0'], dp_tornado)
-                Jv_max = calc_Jv(dp_tornado, Kf, temp_params['alpha'], temp_params['sigma'], Pi, temp_params['dPi'], P_hep)
-                Jlymph_max = calc_Jlymph(temp_params['Jmax'], temp_params['Km'], Pi)
+                Kf_max = calc_Kf_nonlinear(temp_params['Kf0'], dp_tornado)
+                Pi_max_v = calc_Pi_nonlinear(temp_params['Pi0'], dp_tornado)
+                Jv_max = calc_Jv(dp_tornado, Kf_max, temp_params['alpha'], temp_params['sigma'], Pi_max_v, temp_params['dPi'], P_hep)
+                Jlymph_max = calc_Jlymph(temp_params['Jmax'], temp_params['Km'], Pi_max_v)
                 Jnet_max = Jv_max - Jlymph_max
                 val_max = Jnet_max if output_tornado == "Jnet" else Jv_max
                 results.append({'parameter': key, 'base': base, 'min': val_min - base, 'max': val_max - base, 'range': abs(val_max - val_min)})
@@ -1235,8 +1190,8 @@ with st.expander(t["sensitivity_title"], expanded=False):
                 Jv_min = calc_Jv(12, Kf_min, temp_params['alpha'], temp_params['sigma'], Pi_min, temp_params['dPi'], P_hep)
                 temp_params[name] = max_v
                 Kf_max = calc_Kf_nonlinear(temp_params['Kf0'], 12)
-                Pi_max = calc_Pi_nonlinear(temp_params['Pi0'], 12)
-                Jv_max = calc_Jv(12, Kf_max, temp_params['alpha'], temp_params['sigma'], Pi_max, temp_params['dPi'], P_hep)
+                Pi_max_v = calc_Pi_nonlinear(temp_params['Pi0'], 12)
+                Jv_max = calc_Jv(12, Kf_max, temp_params['alpha'], temp_params['sigma'], Pi_max_v, temp_params['dPi'], P_hep)
                 sensitivity = (Jv_max - Jv_min) / (Jv_base + 1e-10)
                 report_data.append({t['report_param']: key, t['report_base']: default_v, t['report_min']: Jv_min, t['report_max']: Jv_max, t['report_sensitivity']: sensitivity, t['report_status']: t["status_low"] if abs(sensitivity) < 0.5 else t["status_medium"] if abs(sensitivity) < 0.8 else t["status_high"]})
             df_report = pd.DataFrame(report_data)
@@ -1337,5 +1292,5 @@ with st.expander(t["3d_title"], expanded=False):
 # ============================================================
 st.divider()
 st.caption(t["footer"])
-st.caption("Ver:3.0.0")
+st.caption("Ver:4.0.8")
 st.caption("Ali Hosseini; ali.hosseini1387@icloud.com")
