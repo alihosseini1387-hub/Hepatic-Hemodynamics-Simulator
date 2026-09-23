@@ -1,6 +1,6 @@
 """
 Hepatic Hemodynamics Simulation App
-Version: 4.0.8 (Dynamic Ascites Model with Saturation)
+Version: 5.0.0 (Dynamic Ascites Model with Saturation)
 """
 
 import streamlit as st
@@ -16,8 +16,7 @@ from utils import get_clinical_interpretation
 def get_plotly_template():
     if st.get_option("theme.base") == "dark":
         return "plotly_dark"
-    else:
-        return "plotly_white"
+    return "plotly_white"
 
 
 st.set_page_config(page_title="Hepatic Hemodynamics Simulator", page_icon="🩸", layout="wide")
@@ -456,35 +455,16 @@ TEXTS = {
 if "lang" not in st.session_state:
     st.session_state.lang = "fa"
 
+
 def set_lang_en():
     st.session_state.lang = "en"
     st.rerun()
+
 
 def set_lang_fa():
     st.session_state.lang = "fa"
     st.rerun()
 
-# ============================================================
-# Intro
-# ============================================================
-if "first_run" not in st.session_state:
-    st.session_state.first_run = True
-
-if st.session_state.first_run:
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        st.markdown("""
-        <div style="text-align: center; padding: 50px 0;">
-            <h1 style="font-size: 60px;">🩸</h1>
-            <h1 style="font-size: 40px; color: #ff4b4b;">Hepatic Hemodynamics Simulator</h1>
-            <h3 style="color: #666;">شبیه‌ساز همودینامیک کبد</h3>
-            <p style="color: #999; font-size: 14px;">Version 4.0 - Dynamic Ascites Model with Saturation</p>
-        </div>
-        """, unsafe_allow_html=True)
-        if st.button("Enter 🚀", use_container_width=True):
-            st.session_state.first_run = False
-            st.rerun()
-    st.stop()
 
 # ============================================================
 # Sidebar
@@ -499,10 +479,10 @@ with st.sidebar:
         if st.button("🇮🇷 فارسی", use_container_width=True):
             set_lang_fa()
     st.divider()
-    
+
     lang = st.session_state.lang
     t = TEXTS[lang]
-    
+
     if lang == "fa":
         st.markdown("""
         <style>
@@ -518,16 +498,16 @@ with st.sidebar:
         }
         </style>
         """, unsafe_allow_html=True)
-    
+
     st.header(t["settings"])
     mode = st.radio(t["mode_label"], [t["mode_manual"], t["mode_auto"]])
-    
+
     st.header(t["hemo_params"])
     if mode == t["mode_manual"]:
         alpha = st.slider(t["manual_alpha"], 0.20, 0.95, 0.54, 0.01)
     else:
         alpha = None
-    
+
     Q_portal = st.number_input(t["portal_flow"], 0.3, 2.0, 1.1, 0.05) / 1000 / 60
     Q_artery = st.number_input(t["artery_flow"], 0.1, 0.8, 0.35, 0.05) / 1000 / 60
     A_portal = st.number_input(t["portal_area"], 0.5, 5.0, 1.1, 0.1) * 1e-4
@@ -535,7 +515,7 @@ with st.sidebar:
     P_hep = st.number_input(t["P_hep"], 0.0, 8.0, 4.0, 0.5)
     h_cm = st.number_input(t["height_diff"], 0.0, 10.0, 4.0, 0.1)
     h = h_cm / 100
-    
+
     st.header(t["sinusoid_params"])
     mu_inf = st.number_input(t["mu_inf"], 0.001, 0.01, 0.0040, 0.0005, format="%.4f")
     tau_y = st.number_input(t["tau_y"], 0.001, 0.01, 0.005, 0.0005, format="%.4f")
@@ -544,13 +524,13 @@ with st.sidebar:
     L_um = st.number_input(t["L"], 100, 500, 365, 5)
     L = L_um * 1e-6
     beta = st.number_input(t["beta"], 0.0, 0.8, 0.10, 0.01)
-    
+
     st.header(t["filtration_params"])
     Kf0 = st.slider(t["kf0"], 1.0, 8.0, 3.0, 0.1)
     sigma = st.slider(t["sigma"], 0.1, 0.4, 0.22, 0.01)
     Pi0 = st.slider(t["pi0"], 0.1, 2.0, 0.5, 0.1)
     dPi = st.slider(t["dpi"], 20, 25, 22, 1)
-    
+
     st.header(t["lymph_params"])
     Jmax = st.number_input(t["jmax"], 10, 50, 35, 1)
     Km = st.number_input(t["km"], 0.1, 2.0, 0.63, 0.01)
@@ -571,7 +551,7 @@ else:
     mu_app = calc_mu_apparent(mu_inf, tau_y, gamma_dot)
     dp_sin = calc_sinusoid_pressure_drop(Q_total, mu_app, L, r0, beta)
     dp_h = rho_blood * g * h
-    dp_v = 0.5 * rho_blood * (vh**2 - vp**2)
+    dp_v = 0.5 * rho_blood * (vh ** 2 - vp ** 2)
     dp_total = dp_sin + dp_h + dp_v
 
 params = {
@@ -579,6 +559,7 @@ params = {
     'Jmax': Jmax, 'Km': Km, 'mu_inf': mu_inf, 'tau_y': tau_y,
     'r0': r0_um, 'beta': beta, 'dPi': dPi
 }
+
 
 def color_jnet(val):
     if val <= 0:
@@ -589,6 +570,7 @@ def color_jnet(val):
         return 'background-color: #ffe5b4'
     else:
         return 'background-color: #f8d7da'
+
 
 # ============================================================
 # Main UI
@@ -613,7 +595,7 @@ if mode == t["mode_auto"]:
     Jv = calc_Jv(deltaP_analysis, Kf, alpha, sigma, Pi, dPi, P_hep)
     Jlymph = calc_Jlymph(Jmax, Km, Pi)
     Jnet = calc_Jnet(Jv, Jlymph)
-    
+
     col1, col2 = st.columns(2)
     with col1:
         st.metric(t["deltaP"], f"{deltaP_analysis:.2f} mmHg")
@@ -622,7 +604,7 @@ if mode == t["mode_auto"]:
         st.metric(t["pi_eff"], f"{Pi:.2f} mmHg")
         st.metric(t["jv"], f"{Jv:.2f} ml/min")
     st.metric(t["jnet"], f"{Jnet:.2f} ml/min")
-    
+
     clinical = get_clinical_interpretation(deltaP_analysis, Jv, Jnet, lang=lang)
     st.info(f"ΔP = {deltaP_analysis:.2f} mmHg | {clinical['status']} | {clinical['ascites_prediction']}")
 
@@ -634,7 +616,7 @@ else:
     Jv = calc_Jv(deltaP_analysis, Kf, alpha, sigma, Pi, dPi, P_hep)
     Jlymph = calc_Jlymph(Jmax, Km, Pi)
     Jnet = calc_Jnet(Jv, Jlymph)
-    
+
     st.subheader(t["manual_results"])
     col1, col2 = st.columns(2)
     with col1:
@@ -644,24 +626,26 @@ else:
         st.metric(t["pi_eff"], f"{Pi:.2f} mmHg")
         st.metric(t["jv"], f"{Jv:.2f} ml/min")
     st.metric(t["jnet"], f"{Jnet:.2f} ml/min")
-    
+
     clinical = get_clinical_interpretation(deltaP_analysis, Jv, Jnet, lang=lang)
     st.info(f"ΔP = {deltaP_analysis:.2f} mmHg | {clinical['status']} | {clinical['ascites_prediction']}")
-    
-    # Filtration Curves
+
     st.subheader(t["filtration_curves"])
     deltaP_range = np.linspace(0, max_deltaP, 300)
     Jv_list, Kf_list, Pi_list, Jlymph_list, Jnet_list = [], [], [], [], []
-    
+
     for dp in deltaP_range:
         Kf = calc_Kf_nonlinear(Kf0, dp)
         Pi = calc_Pi_nonlinear(Pi0, dp)
         Jv = calc_Jv(dp, Kf, alpha, sigma, Pi, dPi, P_hep)
         Jlymph = calc_Jlymph(Jmax, Km, Pi)
         Jnet = calc_Jnet(Jv, Jlymph)
-        Jv_list.append(Jv); Kf_list.append(Kf); Pi_list.append(Pi)
-        Jlymph_list.append(Jlymph); Jnet_list.append(Jnet)
-    
+        Jv_list.append(Jv)
+        Kf_list.append(Kf)
+        Pi_list.append(Pi)
+        Jlymph_list.append(Jlymph)
+        Jnet_list.append(Jnet)
+
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=deltaP_range, y=Jv_list, mode='lines', name=t["jv_curve"], line=dict(color='blue', width=3)))
     fig.add_trace(go.Scatter(x=deltaP_range, y=Jlymph_list, mode='lines', name=t["jlymph_curve"], line=dict(color='green', width=3, dash='dash')))
@@ -670,8 +654,7 @@ else:
     fig.add_vline(x=12, line_dash='dot', line_color='red', annotation_text=t["threshold_line"])
     fig.update_layout(title=t["curves_title"], xaxis_title=t["xaxis_dp"], yaxis_title=t["yaxis_flow"], template=get_plotly_template(), height=500, hovermode='x unified')
     st.plotly_chart(fig, use_container_width=True)
-    
-    # Kf & Pi Curves
+
     st.subheader(t["nonlinear_behavior"])
     col1, col2 = st.columns(2)
     with col1:
@@ -688,8 +671,7 @@ else:
         fig_pi.add_vline(x=12, line_dash='dot', line_color='red')
         fig_pi.update_layout(title=t["pi_title"], xaxis_title=t["xaxis_dp"], yaxis_title=t["pi_yaxis"], template=get_plotly_template(), height=350)
         st.plotly_chart(fig_pi, use_container_width=True)
-    
-    # Key Values Table
+
     st.subheader(t["key_points"])
     key_points = [4, 8, 12, 16, 20]
     data = []
@@ -707,8 +689,7 @@ else:
         })
     df = pd.DataFrame(data)
     st.dataframe(df.style.map(color_jnet, subset=[t["jnet"]]), use_container_width=True, hide_index=True)
-    
-    # Clinical Cards
+
     st.subheader(t["clinical_interpretation"])
     cols = st.columns(3)
     for i, dp in enumerate([8, 12, 16]):
@@ -728,23 +709,20 @@ else:
                 <b>{clinical['ascites_prediction']}</b>
             </div>
             """, unsafe_allow_html=True)
-    
+
     st.caption(t["caption"].format(alpha=alpha, h=h_cm, r0=r0_um, beta=beta, q=(Q_total * 1000 * 60), mu=mu_app))
     st.info(t["info_text"])
-    
-    # ============================================================
-    # DYNAMIC ASCITES PREDICTION
-    # ============================================================
+
     st.divider()
     st.subheader(t["dynamic_title"])
-    
+
     st.markdown(f"""
     <div style="background: linear-gradient(135deg, #1a1a2e, #16213e); padding: 15px; border-radius: 10px; margin-bottom: 15px; color: white;">
         <h4 style="margin: 0; color: #00d2ff;">{t['dynamic_subtitle']}</h4>
         <p style="margin: 5px 0 0 0; opacity: 0.8; font-size: 13px;">{t['dynamic_desc']}</p>
     </div>
     """, unsafe_allow_html=True)
-    
+
     col1, col2, col3, col4 = st.columns(4)
     with col1:
         time_hours = st.slider(t["dynamic_time"], 1, 72, 24, 1)
@@ -754,7 +732,7 @@ else:
         Pi_max = st.slider(t["dynamic_pi_max"], 2.0, 15.0, 10.0, 0.5)
     with col4:
         V0 = st.number_input(t["dynamic_V0"], 0, 1000, 0, 10)
-    
+
     if st.button(t["dynamic_run"], use_container_width=True, type="primary"):
         with st.spinner(t["dynamic_loading"]):
             time_array, V_array, Jnet_array, Pi_array, Jv_array, Jlymph_array = predict_ascites_volume_dynamic(
@@ -763,9 +741,9 @@ else:
                 Jmax=Jmax, Km=Km, deltaP=deltaP_analysis,
                 time_hours=time_hours, V0=V0, dt=0.01, Pi_max=Pi_max
             )
-        
+
         st.success(t["dynamic_success"].format(time=time_hours))
-        
+
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.metric(t["dynamic_final_volume"], f"{V_array[-1]:.1f} mL")
@@ -779,8 +757,7 @@ else:
                 st.metric(t["dynamic_jnet_reduction"], f"{reduction:.1f}%")
             else:
                 st.metric(t["dynamic_jnet_reduction"], "0%")
-        
-        # Plot 1: Ascites Volume
+
         fig_V = go.Figure()
         fig_V.add_trace(go.Scatter(x=time_array, y=V_array, mode='lines',
                                    name=t["dynamic_volume_title"],
@@ -793,8 +770,7 @@ else:
                             yaxis_title=t["dynamic_volume_axis"],
                             template=get_plotly_template(), height=400, hovermode='x unified')
         st.plotly_chart(fig_V, use_container_width=True)
-        
-        # Plot 2: Jnet
+
         fig_Jnet = go.Figure()
         fig_Jnet.add_trace(go.Scatter(x=time_array, y=Jnet_array, mode='lines',
                                       name='Jnet', line=dict(color='#7c3aed', width=3)))
@@ -805,8 +781,7 @@ else:
                                yaxis_title=t["dynamic_jnet_axis"],
                                template=get_plotly_template(), height=400, hovermode='x unified')
         st.plotly_chart(fig_Jnet, use_container_width=True)
-        
-        # Plot 3: Pi with Pi_max line
+
         fig_Pi = go.Figure()
         fig_Pi.add_trace(go.Scatter(x=time_array, y=Pi_array, mode='lines',
                                     name='Pi', line=dict(color='#f9a825', width=3)))
@@ -817,8 +792,7 @@ else:
                              yaxis_title=t["dynamic_pi_axis"],
                              template=get_plotly_template(), height=400, hovermode='x unified')
         st.plotly_chart(fig_Pi, use_container_width=True)
-        
-        # Plot 4: Jv and Jlymph
+
         fig_flows = go.Figure()
         fig_flows.add_trace(go.Scatter(x=time_array, y=Jv_array, mode='lines',
                                        name='Jv (Filtration)', line=dict(color='blue', width=3)))
@@ -829,8 +803,7 @@ else:
                                 yaxis_title=t["dynamic_flow_axis"],
                                 template=get_plotly_template(), height=400, hovermode='x unified')
         st.plotly_chart(fig_flows, use_container_width=True)
-        
-        # Phase Analysis
+
         st.subheader("📊 فازهای دینامیک آسیت")
         col1, col2, col3 = st.columns(3)
         with col1:
@@ -839,13 +812,12 @@ else:
             st.warning(t["dynamic_phase_2"])
         with col3:
             st.error(t["dynamic_phase_3"])
-        
-        # Comparison Table
+
         st.subheader(t["dynamic_comparison"])
         V_static_1h = Jnet_array[0] * 60
         V_static_6h = Jnet_array[0] * 360
         V_static_24h = Jnet_array[0] * 1440
-        
+
         comparison_data = {
             t["dynamic_time_col"]: [t["dynamic_1h"], t["dynamic_6h"], t["dynamic_24h"]],
             t["dynamic_static_col"]: [f"{V_static_1h:.0f} mL", f"{V_static_6h:.0f} mL", f"{V_static_24h:.0f} mL"],
@@ -888,7 +860,7 @@ with st.expander(t["clinical_expander"], expanded=False):
 # ============================================================
 with st.expander(t["bernoulli_title"], expanded=False):
     btab1, btab2, btab3 = st.tabs([t["bernoulli_1d"], t["bernoulli_2d"], t["bernoulli_report"]])
-    
+
     bernoulli_params = {
         t["param_qportal"]: "Q_portal", t["param_qartery"]: "Q_artery",
         t["param_aportal"]: "A_portal", t["param_ahepatic"]: "A_hepatic",
@@ -902,7 +874,7 @@ with st.expander(t["bernoulli_title"], expanded=False):
         "L": (250, 400, 340, 5), "beta": (0.0, 0.4, 0.05, 0.05),
         "mu_inf": (0.002, 0.005, 0.004, 0.001), "tau_y": (0.002, 0.008, 0.005, 0.001)
     }
-    
+
     with btab1:
         col1, col2 = st.columns([1, 2])
         with col1:
@@ -920,21 +892,31 @@ with st.expander(t["bernoulli_title"], expanded=False):
                 alpha_vals, dp_sin_vals, dp_total_vals, Q_total_vals = [], [], [], []
                 for val in b_param_range:
                     temp_Qp, temp_Qa, temp_Ap, temp_Ah, temp_h, temp_r0, temp_L, temp_beta, temp_mu, temp_tau = Q_portal, Q_artery, A_portal, A_hepatic, h, r0, L, beta, mu_inf, tau_y
-                    if bparam_key == "Q_portal": temp_Qp = val/1000/60
-                    elif bparam_key == "Q_artery": temp_Qa = val/1000/60
-                    elif bparam_key == "A_portal": temp_Ap = val*1e-4
-                    elif bparam_key == "A_hepatic": temp_Ah = val*1e-4
-                    elif bparam_key == "h": temp_h = val/100
-                    elif bparam_key == "r0": temp_r0 = val*1e-6
-                    elif bparam_key == "L": temp_L = val*1e-6
-                    elif bparam_key == "beta": temp_beta = val
-                    elif bparam_key == "mu_inf": temp_mu = val
-                    elif bparam_key == "tau_y": temp_tau = val
+                    if bparam_key == "Q_portal":
+                        temp_Qp = val / 1000 / 60
+                    elif bparam_key == "Q_artery":
+                        temp_Qa = val / 1000 / 60
+                    elif bparam_key == "A_portal":
+                        temp_Ap = val * 1e-4
+                    elif bparam_key == "A_hepatic":
+                        temp_Ah = val * 1e-4
+                    elif bparam_key == "h":
+                        temp_h = val / 100
+                    elif bparam_key == "r0":
+                        temp_r0 = val * 1e-6
+                    elif bparam_key == "L":
+                        temp_L = val * 1e-6
+                    elif bparam_key == "beta":
+                        temp_beta = val
+                    elif bparam_key == "mu_inf":
+                        temp_mu = val
+                    elif bparam_key == "tau_y":
+                        temp_tau = val
                     temp_alpha, temp_Qtotal, _, _, temp_dpsin, _, _, temp_dptotal, _ = calc_alpha(temp_Qp, temp_Qa, temp_Ap, temp_Ah, temp_h, temp_r0, temp_beta, temp_L, temp_mu, temp_tau)
                     alpha_vals.append(temp_alpha)
-                    dp_sin_vals.append(temp_dpsin/mmHg_to_Pa)
-                    dp_total_vals.append(temp_dptotal/mmHg_to_Pa)
-                    Q_total_vals.append(temp_Qtotal*1000*60)
+                    dp_sin_vals.append(temp_dpsin / mmHg_to_Pa)
+                    dp_total_vals.append(temp_dptotal / mmHg_to_Pa)
+                    Q_total_vals.append(temp_Qtotal * 1000 * 60)
                 fig_b = go.Figure()
                 if b_output_type == t["output_alpha"]:
                     fig_b.add_trace(go.Scatter(x=b_param_range, y=alpha_vals, mode='lines+markers', name=t["output_alpha"], line=dict(color='#00d2ff', width=3)))
@@ -947,7 +929,7 @@ with st.expander(t["bernoulli_title"], expanded=False):
                 fig_b.add_vline(x=default_val, line_dash='dash', line_color='orange')
                 fig_b.update_layout(title=t["bernoulli_effect"].format(param=selected_bparam), xaxis_title=selected_bparam, yaxis_title="Value", template=get_plotly_template(), height=450)
                 st.plotly_chart(fig_b, use_container_width=True)
-    
+
     with btab2:
         col1, col2 = st.columns(2)
         with col1:
@@ -972,45 +954,68 @@ with st.expander(t["bernoulli_title"], expanded=False):
             for i, v1 in enumerate(x_vals):
                 for j, v2 in enumerate(y_vals):
                     temp_Qp, temp_Qa, temp_Ap, temp_Ah, temp_h, temp_r0, temp_L, temp_beta, temp_mu, temp_tau = Q_portal, Q_artery, A_portal, A_hepatic, h, r0, L, beta, mu_inf, tau_y
-                    if bp1_key == "Q_portal": temp_Qp = v1/1000/60
-                    elif bp1_key == "Q_artery": temp_Qa = v1/1000/60
-                    elif bp1_key == "A_portal": temp_Ap = v1*1e-4
-                    elif bp1_key == "A_hepatic": temp_Ah = v1*1e-4
-                    elif bp1_key == "h": temp_h = v1/100
-                    elif bp1_key == "r0": temp_r0 = v1*1e-6
-                    elif bp1_key == "L": temp_L = v1*1e-6
-                    elif bp1_key == "beta": temp_beta = v1
-                    elif bp1_key == "mu_inf": temp_mu = v1
-                    elif bp1_key == "tau_y": temp_tau = v1
-                    if bp2_key == "Q_portal": temp_Qp = v2/1000/60
-                    elif bp2_key == "Q_artery": temp_Qa = v2/1000/60
-                    elif bp2_key == "A_portal": temp_Ap = v2*1e-4
-                    elif bp2_key == "A_hepatic": temp_Ah = v2*1e-4
-                    elif bp2_key == "h": temp_h = v2/100
-                    elif bp2_key == "r0": temp_r0 = v2*1e-6
-                    elif bp2_key == "L": temp_L = v2*1e-6
-                    elif bp2_key == "beta": temp_beta = v2
-                    elif bp2_key == "mu_inf": temp_mu = v2
-                    elif bp2_key == "tau_y": temp_tau = v2
+                    if bp1_key == "Q_portal":
+                        temp_Qp = v1 / 1000 / 60
+                    elif bp1_key == "Q_artery":
+                        temp_Qa = v1 / 1000 / 60
+                    elif bp1_key == "A_portal":
+                        temp_Ap = v1 * 1e-4
+                    elif bp1_key == "A_hepatic":
+                        temp_Ah = v1 * 1e-4
+                    elif bp1_key == "h":
+                        temp_h = v1 / 100
+                    elif bp1_key == "r0":
+                        temp_r0 = v1 * 1e-6
+                    elif bp1_key == "L":
+                        temp_L = v1 * 1e-6
+                    elif bp1_key == "beta":
+                        temp_beta = v1
+                    elif bp1_key == "mu_inf":
+                        temp_mu = v1
+                    elif bp1_key == "tau_y":
+                        temp_tau = v1
+                    if bp2_key == "Q_portal":
+                        temp_Qp = v2 / 1000 / 60
+                    elif bp2_key == "Q_artery":
+                        temp_Qa = v2 / 1000 / 60
+                    elif bp2_key == "A_portal":
+                        temp_Ap = v2 * 1e-4
+                    elif bp2_key == "A_hepatic":
+                        temp_Ah = v2 * 1e-4
+                    elif bp2_key == "h":
+                        temp_h = v2 / 100
+                    elif bp2_key == "r0":
+                        temp_r0 = v2 * 1e-6
+                    elif bp2_key == "L":
+                        temp_L = v2 * 1e-6
+                    elif bp2_key == "beta":
+                        temp_beta = v2
+                    elif bp2_key == "mu_inf":
+                        temp_mu = v2
+                    elif bp2_key == "tau_y":
+                        temp_tau = v2
                     temp_alpha, _, _, _, temp_dpsin, _, _, temp_dptotal, _ = calc_alpha(temp_Qp, temp_Qa, temp_Ap, temp_Ah, temp_h, temp_r0, temp_beta, temp_L, temp_mu, temp_tau)
-                    if bhm_output == t["output_alpha"]: Z[j, i] = temp_alpha
-                    elif bhm_output == t["output_dpsin"]: Z[j, i] = temp_dpsin/mmHg_to_Pa
-                    else: Z[j, i] = temp_dptotal/mmHg_to_Pa
+                    if bhm_output == t["output_alpha"]:
+                        Z[j, i] = temp_alpha
+                    elif bhm_output == t["output_dpsin"]:
+                        Z[j, i] = temp_dpsin / mmHg_to_Pa
+                    else:
+                        Z[j, i] = temp_dptotal / mmHg_to_Pa
             fig_bhm = go.Figure(data=go.Heatmap(z=Z, x=x_vals, y=y_vals, colorscale='Viridis'))
             fig_bhm.update_layout(title=t["bernoulli_heatmap"].format(p1=bparam1, p2=bparam2), xaxis_title=bparam1, yaxis_title=bparam2, height=550)
             st.plotly_chart(fig_bhm, use_container_width=True)
             fig_3d = go.Figure(data=[go.Surface(z=Z, x=x_vals, y=y_vals, colorscale='Viridis')])
             fig_3d.update_layout(title=f"3D: {bparam1} & {bparam2}", scene=dict(xaxis_title=bparam1, yaxis_title=bparam2, zaxis_title=bhm_output), height=600)
             st.plotly_chart(fig_3d, use_container_width=True)
-    
+
     with btab3:
         if st.button(t["report_generate"], use_container_width=True, type="primary", key="gen_breport"):
             report_data = []
             for key, name in bernoulli_params.items():
                 min_v, max_v, default_v, _ = bernoulli_ranges[name]
                 temp_alpha_base, _, _, _, _, _, _, _, _ = calc_alpha(Q_portal, Q_artery, A_portal, A_hepatic, h, r0, beta, L, mu_inf, tau_y)
-                temp_alpha_min, _, _, _, _, _, _, _, _ = calc_alpha(Q_portal if name != "Q_portal" else min_v/1000/60, Q_artery if name != "Q_artery" else min_v/1000/60, A_portal if name != "A_portal" else min_v*1e-4, A_hepatic if name != "A_hepatic" else min_v*1e-4, h if name != "h" else min_v/100, r0 if name != "r0" else min_v*1e-6, beta if name != "beta" else min_v, L if name != "L" else min_v*1e-6, mu_inf if name != "mu_inf" else min_v, tau_y if name != "tau_y" else min_v)
-                temp_alpha_max, _, _, _, _, _, _, _, _ = calc_alpha(Q_portal if name != "Q_portal" else max_v/1000/60, Q_artery if name != "Q_artery" else max_v/1000/60, A_portal if name != "A_portal" else max_v*1e-4, A_hepatic if name != "A_hepatic" else max_v*1e-4, h if name != "h" else max_v/100, r0 if name != "r0" else max_v*1e-6, beta if name != "beta" else max_v, L if name != "L" else max_v*1e-6, mu_inf if name != "mu_inf" else max_v, tau_y if name != "tau_y" else max_v)
+                temp_alpha_min, _, _, _, _, _, _, _, _ = calc_alpha(Q_portal if name != "Q_portal" else min_v / 1000 / 60, Q_artery if name != "Q_artery" else min_v / 1000 / 60, A_portal if name != "A_portal" else min_v * 1e-4, A_hepatic if name != "A_hepatic" else min_v * 1e-4, h if name != "h" else min_v / 100, r0 if name != "r0" else min_v * 1e-6, beta if name != "beta" else min_v, L if name != "L" else min_v * 1e-6, mu_inf if name != "mu_inf" else min_v, tau_y if name != "tau_y" else min_v)
+                temp_alpha_max, _, _, _, _, _, _, _, _ = calc_alpha(Q_portal if name != "Q_portal" else max_v / 1000 / 60, Q_artery if name != "Q_artery" else max_v / 1000 / 60, A_portal if name != "A_portal" else max_v * 1e-4, A_hepatic if name != "A_hepatic" else max_v * 1e-4, h if name != "h" else max_v / 100, r0 if name != "r0" else max_v * 1e-6, beta if name != "beta" else max_v, L if name != "L" else max_v * 1e-6, mu_inf if name != "mu_inf" else max_v, tau_y if name != "tau_y" else max_v)
                 sensitivity = (temp_alpha_max - temp_alpha_min) / (temp_alpha_base + 1e-10)
                 report_data.append({t['report_param']: key, t['report_base']: default_v, 'α_min': temp_alpha_min, 'α_max': temp_alpha_max, t['report_sensitivity']: sensitivity, t['report_status']: t["status_low"] if abs(sensitivity) < 0.1 else t["status_medium"] if abs(sensitivity) < 0.3 else t["status_high"]})
             df_breport = pd.DataFrame(report_data)
@@ -1027,10 +1032,10 @@ with st.expander(t["bernoulli_title"], expanded=False):
 # ============================================================
 with st.expander(t["sensitivity_title"], expanded=False):
     tab1, tab2, tab3, tab4, tab5 = st.tabs([t["sensitivity_1d"], t["sensitivity_2d"], t["sensitivity_tornado"], t["sensitivity_monte"], t["sensitivity_report"]])
-    
+
     param_options = {t["param_kf0"]: "Kf0", t["param_sigma"]: "sigma", t["param_pi0"]: "Pi0", t["param_jmax"]: "Jmax", t["param_dpi"]: "dPi", t["param_km"]: "Km"}
     ranges = {"Kf0": (1.0, 5.0, 3.0, 0.5), "sigma": (0.1, 0.4, 0.22, 0.02), "Pi0": (0.1, 2.0, 0.5, 0.1), "Jmax": (30, 50, 40, 5), "dPi": (18, 26, 22, 1), "Km": (0.1, 1.5, 0.74, 0.1)}
-    
+
     with tab1:
         col1, col2 = st.columns([1, 2])
         with col1:
@@ -1055,7 +1060,9 @@ with st.expander(t["sensitivity_title"], expanded=False):
                     Jv = calc_Jv(fixed_deltaP, Kf, temp_params['alpha'], temp_params['sigma'], Pi, temp_params['dPi'], P_hep)
                     Jlymph = calc_Jlymph(temp_params['Jmax'], temp_params['Km'], Pi)
                     Jnet = calc_Jnet(Jv, Jlymph)
-                    Jv_vals.append(Jv); Jnet_vals.append(Jnet); Kf_vals.append(Kf)
+                    Jv_vals.append(Jv)
+                    Jnet_vals.append(Jnet)
+                    Kf_vals.append(Kf)
                 fig = go.Figure()
                 if output_type in [t["output_jv"], t["output_both"]]:
                     fig.add_trace(go.Scatter(x=param_range, y=Jv_vals, mode='lines+markers', name=t["output_jv"], line=dict(color='#00d2ff', width=3)))
@@ -1063,7 +1070,7 @@ with st.expander(t["sensitivity_title"], expanded=False):
                     fig.add_trace(go.Scatter(x=param_range, y=Jnet_vals, mode='lines+markers', name=t["output_jnet"], line=dict(color='#ff6b6b', width=3)))
                 fig.update_layout(title=t["sens_effect"].format(param=selected_param), xaxis_title=selected_param, yaxis_title=t["yaxis_flow"], template=get_plotly_template(), height=450)
                 st.plotly_chart(fig, use_container_width=True)
-    
+
     with tab2:
         col1, col2 = st.columns(2)
         with col1:
@@ -1099,11 +1106,13 @@ with st.expander(t["sensitivity_title"], expanded=False):
             fig_hm = go.Figure(data=go.Heatmap(z=Z, x=x_vals, y=y_vals, colorscale='RdYlGn', zmid=0))
             fig_hm.update_layout(title=t["sens_heatmap_title"].format(p1=param1, p2=param2), xaxis_title=param1, yaxis_title=param2, height=550)
             st.plotly_chart(fig_hm, use_container_width=True)
-    
+
     with tab3:
         col1, col2 = st.columns(2)
-        with col1: dp_tornado = st.slider(t["fixed_deltaP"], 0.0, 25.0, 12.0, 0.5, key="tor_dp")
-        with col2: output_tornado = st.selectbox(t["tornado_output"], ["Jnet", "Jv"], key="tor_out")
+        with col1:
+            dp_tornado = st.slider(t["fixed_deltaP"], 0.0, 25.0, 12.0, 0.5, key="tor_dp")
+        with col2:
+            output_tornado = st.selectbox(t["tornado_output"], ["Jnet", "Jv"], key="tor_out")
         if st.button(t["run_analysis"], use_container_width=True, type="primary", key="run_tor"):
             results = []
             for key, name in param_options.items():
@@ -1139,7 +1148,7 @@ with st.expander(t["sensitivity_title"], expanded=False):
             fig_tor.add_trace(go.Bar(y=names, x=max_vals, name=t["afz"], orientation='h', marker_color='#00d2ff'))
             fig_tor.update_layout(title=t["sens_tornado_title"].format(output=output_tornado), xaxis_title=t["sens_range"], template=get_plotly_template(), height=500, barmode='relative')
             st.plotly_chart(fig_tor, use_container_width=True)
-    
+
     with tab4:
         col1, col2 = st.columns(2)
         with col1:
@@ -1161,7 +1170,8 @@ with st.expander(t["sensitivity_title"], expanded=False):
                 Jv = calc_Jv(mc_dp, Kf, params['alpha'], sigma_samples[i], Pi, dPi_samples[i], P_hep)
                 Jlymph = calc_Jlymph(params['Jmax'], params['Km'], Pi)
                 Jnet = calc_Jnet(Jv, Jlymph)
-                Jv_samples.append(Jv); Jnet_samples.append(Jnet)
+                Jv_samples.append(Jv)
+                Jnet_samples.append(Jnet)
             c1, c2, c3 = st.columns(3)
             c1.metric(t["mc_mean"], f"{np.mean(Jv_samples):.2f}", delta=f"±{np.std(Jv_samples):.2f}")
             c2.metric(t["mc_ci"], f"[{np.percentile(Jv_samples, 2.5):.2f}, {np.percentile(Jv_samples, 97.5):.2f}]")
@@ -1171,7 +1181,7 @@ with st.expander(t["sensitivity_title"], expanded=False):
             fig_mc.add_vline(x=0, line_dash='dash', line_color='red')
             fig_mc.update_layout(title=t["sens_mc_title"].format(n=n_simulations), xaxis_title="Jnet (ml/min)", yaxis_title="Count", template=get_plotly_template(), height=400)
             st.plotly_chart(fig_mc, use_container_width=True)
-    
+
     with tab5:
         if st.button(t["report_generate"], use_container_width=True, type="primary", key="gen_report"):
             report_data = []
@@ -1269,12 +1279,18 @@ with st.expander(t["3d_title"], expanded=False):
             for j in range(n_points):
                 p1_val, p2_val = X[i, j], Y[i, j]
                 temp_Kf0, temp_dp, temp_sigma = Kf0, deltaP_analysis, sigma
-                if param_3d_1 == "Kf₀": temp_Kf0 = p1_val
-                elif param_3d_1 == "ΔP": temp_dp = p1_val
-                elif param_3d_1 == "σ": temp_sigma = p1_val
-                if param_3d_2 == "Kf₀": temp_Kf0 = p2_val
-                elif param_3d_2 == "ΔP": temp_dp = p2_val
-                elif param_3d_2 == "σ": temp_sigma = p2_val
+                if param_3d_1 == "Kf₀":
+                    temp_Kf0 = p1_val
+                elif param_3d_1 == "ΔP":
+                    temp_dp = p1_val
+                elif param_3d_1 == "σ":
+                    temp_sigma = p1_val
+                if param_3d_2 == "Kf₀":
+                    temp_Kf0 = p2_val
+                elif param_3d_2 == "ΔP":
+                    temp_dp = p2_val
+                elif param_3d_2 == "σ":
+                    temp_sigma = p2_val
                 Kf_temp = calc_Kf_nonlinear(temp_Kf0, temp_dp)
                 Pi_temp = calc_Pi_nonlinear(Pi0, temp_dp)
                 Jv_temp = calc_Jv(temp_dp, Kf_temp, alpha, temp_sigma, Pi_temp, dPi, P_hep)
@@ -1289,5 +1305,5 @@ with st.expander(t["3d_title"], expanded=False):
 # ============================================================
 st.divider()
 st.caption(t["footer"])
-st.caption("Ver:4.0.8")
+st.caption("Ver:5.0.0 (Dynamic + Saturation)")
 st.caption("Ali Hosseini; ali.hosseini1387@icloud.com")
