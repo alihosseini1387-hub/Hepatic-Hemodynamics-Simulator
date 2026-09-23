@@ -1,8 +1,6 @@
 """
 Hepatic Hemodynamics Simulation App
-Based on: Simulation of hepatic blood flow based on fluid mechanics principles
-Author: Ali Hosseini
-Version: 6.0.0 (Full UI + Dynamic Ascites Model)
+Version: 8.0.0 (Two-Compartment Model)
 """
 
 import streamlit as st
@@ -17,7 +15,8 @@ from models import (
     calc_Kf_nonlinear, calc_Pi_nonlinear,
     calc_Jlymph, calc_Jnet,
     calc_alpha, calc_Jv,
-    calc_Pi_dynamic, predict_ascites_volume_dynamic,
+    calc_J_capsule, calc_J_perit_lymph,
+    predict_ascites_two_compartment,
 )
 
 from utils import get_clinical_interpretation
@@ -38,7 +37,7 @@ if st.session_state.first_run:
             <h1 style="font-size: 60px;">🩸</h1>
             <h1 style="font-size: 40px; color: #ff4b4b;">Hepatic Hemodynamics Simulator</h1>
             <h3 style="color: #666;">شبیه‌ساز همودینامیک کبد</h3>
-            <p style="color: #999; font-size: 14px;">Version 6.0 - Full UI + Dynamic Ascites Model</p>
+            <p style="color: #999; font-size: 14px;">Version 8.0 - Two-Compartment Model</p>
             <br>
             <style>
             .stButton button {
@@ -240,7 +239,7 @@ TEXTS = {
         "row4_4": "Exponential Filtration Growth + Lymphatic Saturation",
         "mechanisms_title": "🔬 Key Mechanisms",
         "mech1": "1. Hydraulic Breakdown: At ΔP ≥ 12 mmHg, the combination of viscosity reduction and Kf increase leads to accelerated filtration growth.",
-        "mech2": "2. Clinical Threshold: The 12 mmHg point matches clinical observations (Garcia-Tsao et al., 2017) for ascites formation threshold.",
+        "mech2": "2. Clinical Threshold: The 12 mmHg point matches clinical observations for ascites formation threshold.",
         "mech3": "3. Compensatory Mechanism: Increased Pi partially reduces filtration, but is insufficient at high pressures.",
         "mech4": "4. Lymphatic Saturation: The lymphatic system has limited capacity and cannot fully drain fluid after passing the threshold.",
         "clinical_app": "🏥 Clinical Application",
@@ -263,50 +262,61 @@ TEXTS = {
         "comp_lymph": "Lymphatic Drainage (Michaelis-Menten)",
         "innovation_title": "**Main Innovation:**",
         "innovation_text": "Combination of modified Bernoulli equation, Poiseuille's law with variable radius (β), Casson model, and Starling equation with nonlinear Kf and Pi in a unified framework.",
-        "footer": "🩸 Hepatic Hemodynamics Simulator | Based on the paper: Simulation of hepatic blood flow based on fluid mechanics principles | Mandegar Alborz Research Center | Academic Year 2025-2026",
+        "footer": "🩸 Hepatic Hemodynamics Simulator | Mandegar Alborz Research Center | Academic Year 2025-2026",
         "lang_label": "Language",
         "lang_en": "🇬🇧 English",
         "lang_fa": "🇮🇷 Persian",
 
-        # Dynamic Model (NEW)
-        "dynamic_title": "📈 Dynamic Ascites Prediction",
-        "dynamic_subtitle": "🔬 Dynamic Model (Differential Equation with Saturation)",
-        "dynamic_desc": "Interstitial pressure (Pi) increases with fluid volume but is limited to Pi_max. This causes gradual decrease in Jnet and eventually re-acceleration of ascites volume.",
-        "dynamic_time": "⏱️ Simulation Time (hours)",
-        "dynamic_k_elastance": "📊 Tissue Elastance Coefficient (mmHg/mL)",
-        "dynamic_pi_max": "📊 Max Interstitial Pressure Pi_max (mmHg)",
-        "dynamic_V0": "💧 Initial Ascites Volume (mL)",
+        # Dynamic Model (Two-Compartment)
+        "dynamic_title": "📈 Dynamic Two-Compartment Model",
+        "dynamic_subtitle": "🔬 Two-Compartment Model (Interstitial + Ascites)",
+        "dynamic_desc": "Fluid first leaks from sinusoids into the hepatic interstitial space (fast), then crosses Glisson's capsule into the peritoneal cavity (slow). This creates the correct timescale of weeks.",
+        "dynamic_time": "⏱️ Simulation Time (weeks)",
+        "dynamic_k_elastance": "📊 k_elastance (mmHg/mL)",
+        "dynamic_kf_capsule": "📊 Kf_capsule_0",
+        "dynamic_k_abdominal": "📊 k_abdominal (mmHg/mL)",
+        "dynamic_j_perit_max": "J_perit_max (mL/min)",
+        "dynamic_k_perit": "K_perit (mL)",
+        "dynamic_p_perit_0": "P_perit_0 (mmHg)",
         "dynamic_run": "🚀 Run Dynamic Simulation",
-        "dynamic_success": "✅ Simulation for {time} hours completed successfully!",
-        "dynamic_final_volume": "📊 Final Ascites Volume",
-        "dynamic_initial_jnet": "📉 Initial Jnet",
-        "dynamic_final_jnet": "📉 Final Jnet",
-        "dynamic_jnet_reduction": "📉 Jnet Reduction",
-        "dynamic_volume_title": "Dynamic Ascites Volume",
-        "dynamic_jnet_title": "Jnet Changes Over Time",
-        "dynamic_pi_title": "Interstitial Pressure (Pi) Changes Over Time",
-        "dynamic_flows_title": "Jv and Jlymph Changes Over Time",
-        "dynamic_time_axis": "Time (hours)",
-        "dynamic_volume_axis": "Ascites Volume (mL)",
-        "dynamic_jnet_axis": "Jnet (ml/min)",
-        "dynamic_pi_axis": "Pi (mmHg)",
-        "dynamic_flow_axis": "Flow (ml/min)",
+        "dynamic_success": "✅ Simulation for {time} weeks completed successfully!",
+        "dynamic_final_vasc": "💧 Final V_ascites (mL)",
+        "dynamic_final_vint": "🧪 Final V_interstitial (mL)",
+        "dynamic_final_pi": "📊 Final Pi (mmHg)",
+        "dynamic_final_dp": "📈 Final ΔP (mmHg)",
+        "dynamic_volumes_title": "Two-Compartment Volumes Over Time",
+        "dynamic_flows_title": "Flows Over Time",
+        "dynamic_pressures_title": "Pressures Over Time",
+        "dynamic_phase_title": "Phase Diagram: V_ascites vs ΔP",
+        "dynamic_time_axis": "Time (weeks)",
+        "dynamic_volume_axis": "Volume (mL)",
+        "dynamic_flow_axis": "Flow (mL/min)",
+        "dynamic_pressure_axis": "Pressure (mmHg)",
+        "dynamic_dp_axis": "ΔP (mmHg)",
+        "dynamic_vint_label": "V_interstitial (Liver)",
+        "dynamic_vasc_label": "V_ascites (Peritoneum)",
+        "dynamic_jv_label": "Jv (Filtration)",
+        "dynamic_jlymph_label": "Jlymph (Hepatic Lymph)",
+        "dynamic_jcapsule_label": "J_capsule (Capsule)",
+        "dynamic_jperit_label": "J_perit_lymph (Peritoneal Lymph)",
+        "dynamic_pi_label": "Pi (Interstitial)",
+        "dynamic_pperit_label": "P_peritoneum",
+        "dynamic_dp_label": "ΔP_portal (Feedback)",
         "dynamic_threshold": "Threshold 500 mL",
-        "dynamic_equilibrium": "Equilibrium Point",
-        "dynamic_pi_max_line": "Pi_max",
-        "dynamic_comparison": "📊 Comparison of Static and Dynamic Models",
+        "dynamic_comparison": "📊 Comparison Over Time",
         "dynamic_time_col": "Time",
-        "dynamic_static_col": "Static Model (Linear)",
-        "dynamic_dynamic_col": "Dynamic Model (Nonlinear)",
-        "dynamic_1h": "1 hour",
-        "dynamic_6h": "6 hours",
-        "dynamic_24h": "24 hours",
-        "dynamic_interpretation": "📌 The static model assumes constant Jnet. The dynamic model considers compensatory mechanisms and saturation of Pi, showing more realistic predictions.",
-        "dynamic_loading": "⏳ Solving differential equation...",
+        "dynamic_vint_col": "V_int (mL)",
+        "dynamic_vasc_col": "V_asc (mL)",
+        "dynamic_dp_col": "ΔP (mmHg)",
+        "dynamic_1w": "1 week",
+        "dynamic_2w": "2 weeks",
+        "dynamic_4w": "4 weeks",
+        "dynamic_interpretation": "📌 The two-compartment model shows that fluid first accumulates in the interstitial space (V_int), then crosses the capsule into the peritoneum (V_asc). This creates a timescale of weeks, matching clinical observations. The abdominal pressure feedback loop (ΔP = ΔP_0 + k_abdominal × V_asc) also increases portal pressure as ascites grows.",
+        "dynamic_loading": "⏳ Solving two-compartment equations...",
 
         # Sensitivity Analysis
         "sensitivity_title": "📊 Advanced Sensitivity Analysis",
-        "sensitivity_subtitle": "Advanced sensitivity analysis with Monte Carlo, Heatmap and Tornado Diagram",
+        "sensitivity_subtitle": "Monte Carlo, Heatmap and Tornado Diagram",
         "sensitivity_1d": "📈 One-Dimensional",
         "sensitivity_2d": "🎯 Two-Dimensional",
         "sensitivity_tornado": "🌪️ Tornado Diagram",
@@ -413,7 +423,7 @@ TEXTS = {
     },
     "fa": {
         "app_title": "🩸 شبیه‌ساز تراوش کبد",
-        "app_subtitle": "ساخته شده بر اساس مقاله *شبیه‌سازی جریان خون در کبد بر اساس اصول و معادلات مکانیک سیالات*، دبیرستان ماندگار البرز",
+        "app_subtitle": "بر اساس مقاله *شبیه‌سازی جریان خون در کبد بر اساس اصول و معادلات مکانیک سیالات*، دبیرستان ماندگار البرز",
 
         # Presets
         "preset_title": "📋 سناریوهای بالینی",
@@ -565,7 +575,7 @@ TEXTS = {
         "row4_4": "رشد نمایی تراوش + اشباع لنفاوی",
         "mechanisms_title": "🔬 مکانیسم‌های کلیدی",
         "mech1": "1. شکست هیدرولیکی: در ΔP ≥ ۱۲ mmHg، ترکیب کاهش ویسکوزیته و افزایش Kf منجر به افزایش شتاب‌دار تراوش می‌شود.",
-        "mech2": "2. آستانه بالینی: نقطه ۱۲ mmHg به‌عنوان آستانه تشکیل آسیت با مشاهدات بالینی (Garcia-Tsao et al., 2017) همخوانی دارد.",
+        "mech2": "2. آستانه بالینی: نقطه ۱۲ mmHg به‌عنوان آستانه تشکیل آسیت با مشاهدات بالینی همخوانی دارد.",
         "mech3": "3. مکانیسم جبرانی: افزایش Pi تا حدی تراوش را کاهش می‌دهد، اما در فشارهای بالا ناکافی است.",
         "mech4": "4. اشباع لنفاوی: سیستم لنفاوی با ظرفیت محدود، پس از عبور از آستانه قادر به تخلیه کامل مایع نیست.",
         "clinical_app": "🏥 کاربرد بالینی",
@@ -579,7 +589,7 @@ TEXTS = {
         "comparison_col3": "Dongaonkar et al. (2018)",
         "comparison_col4": "Dongaonkar et al. (2020)",
         "comparison_col5": "**مدل حاضر**",
-        "comp_bernoulli": "برنولی اصالح‌شده",
+        "comp_bernoulli": "برنولی اصلاح‌شده",
         "comp_viscous": "افت فشار ویسکوزی",
         "comp_kf": "Kf غیرخطی وابسته به فشار",
         "comp_pi": "Pi غیرخطی وابسته به فشار",
@@ -587,51 +597,62 @@ TEXTS = {
         "comp_casson": "مدل کاسون (غیرنیوتنی)",
         "comp_lymph": "تخلیه لنفاوی (مایکلـیس-منتن)",
         "innovation_title": "**نوآوری اصلی:**",
-        "innovation_text": "ترکیب معادله برنولی اصالح‌شده، قانون پوازوی با شعاع متغیر (β)، مدل کاسون، و معادله استارلینگ با Kf و Pi غیرخطی در یک چارچوب یکپارچه.",
-        "footer": "🩸 شبیه‌ساز همودینامیک کبد | بر اساس مقاله: شبیه‌سازی جریان خون در کبد بر اساس اصول و معادلات مکانیک سیالات | پژوهش‌سرای ماندگار البرز | سال تحصیلی ۱۴۰۵-۱۴۰۴",
+        "innovation_text": "ترکیب معادله برنولی اصلاح‌شده، قانون پوازوی با شعاع متغیر (β)، مدل کاسون، و معادله استارلینگ با Kf و Pi غیرخطی در یک چارچوب یکپارچه.",
+        "footer": "🩸 شبیه‌ساز همودینامیک کبد | پژوهش‌سرای ماندگار البرز | سال تحصیلی ۱۴۰۵-۱۴۰۴",
         "lang_label": "زبان",
         "lang_en": "🇬🇧 English",
         "lang_fa": "🇮🇷 فارسی",
 
-        # Dynamic Model (NEW)
-        "dynamic_title": "📈 پیش‌بینی دینامیک حجم آسیت",
-        "dynamic_subtitle": "🔬 مدل دینامیک (معادله دیفرانسیل با اشباع)",
-        "dynamic_desc": "در این مدل، فشار میان‌بافتی (Pi) با حجم افزایش می‌یابد اما به Pi_max محدود می‌شود. این محدودیت باعث کاهش تدریجی Jnet و سپس رشد دوباره حجم می‌شود. حل با روش اویلر.",
-        "dynamic_time": "⏱️ مدت زمان شبیه‌سازی (ساعت)",
-        "dynamic_k_elastance": "📊 ضریب الاستانس بافت (mmHg/mL)",
-        "dynamic_pi_max": "📊 حداکثر فشار بین‌بافتی Pi_max (mmHg)",
-        "dynamic_V0": "💧 حجم اولیه آسیت (mL)",
+        # Dynamic Model (Two-Compartment)
+        "dynamic_title": "📈 مدل دینامیک دو-کپارتمانه",
+        "dynamic_subtitle": "🔬 Two-Compartment Model (Interstitial + Ascites)",
+        "dynamic_desc": "مایع ابتدا از سینوزوئیدها به فضای بین‌بافتی کبد (سریع) تراوش می‌کند، سپس از کپسول گلیسون عبور کرده و به حفره صفاقی (کند) می‌رسد. این مدل، مقیاس زمانی هفته را پیش‌بینی می‌کند.",
+        "dynamic_time": "⏱️ مدت زمان (هفته)",
+        "dynamic_k_elastance": "📊 k_elastance (mmHg/mL)",
+        "dynamic_kf_capsule": "📊 Kf_capsule_0",
+        "dynamic_k_abdominal": "📊 k_abdominal (mmHg/mL)",
+        "dynamic_j_perit_max": "J_perit_max (mL/min)",
+        "dynamic_k_perit": "K_perit (mL)",
+        "dynamic_p_perit_0": "P_perit_0 (mmHg)",
         "dynamic_run": "🚀 شبیه‌سازی دینامیک",
-        "dynamic_success": "✅ شبیه‌سازی برای {time} ساعت انجام شد!",
-        "dynamic_final_volume": "📊 حجم نهایی آسیت",
-        "dynamic_initial_jnet": "📉 Jnet اولیه",
-        "dynamic_final_jnet": "📉 Jnet نهایی",
-        "dynamic_jnet_reduction": "📉 کاهش Jnet",
-        "dynamic_volume_title": "دینامیک حجم آسیت",
-        "dynamic_jnet_title": "تغییرات Jnet در طول زمان",
-        "dynamic_pi_title": "تغییرات فشار میان‌بافتی (Pi)",
-        "dynamic_flows_title": "تغییرات Jv و Jlymph در طول زمان",
-        "dynamic_time_axis": "زمان (ساعت)",
-        "dynamic_volume_axis": "حجم آسیت (mL)",
-        "dynamic_jnet_axis": "Jnet (ml/min)",
-        "dynamic_pi_axis": "Pi (mmHg)",
-        "dynamic_flow_axis": "جریان (ml/min)",
+        "dynamic_success": "✅ شبیه‌سازی برای {time} هفته انجام شد!",
+        "dynamic_final_vasc": "💧 V_asc نهایی (mL)",
+        "dynamic_final_vint": "🧪 V_int نهایی (mL)",
+        "dynamic_final_pi": "📊 Pi نهایی (mmHg)",
+        "dynamic_final_dp": "📈 ΔP نهایی (mmHg)",
+        "dynamic_volumes_title": "حجم دو کمپارتمان در طول زمان",
+        "dynamic_flows_title": "جریان‌ها در طول زمان",
+        "dynamic_pressures_title": "فشارها در طول زمان",
+        "dynamic_phase_title": "نمودار فاز: V_asc بر حسب ΔP",
+        "dynamic_time_axis": "زمان (هفته)",
+        "dynamic_volume_axis": "حجم (mL)",
+        "dynamic_flow_axis": "جریان (mL/min)",
+        "dynamic_pressure_axis": "فشار (mmHg)",
+        "dynamic_dp_axis": "ΔP (mmHg)",
+        "dynamic_vint_label": "V_interstitial (کبد)",
+        "dynamic_vasc_label": "V_ascites (صفاق)",
+        "dynamic_jv_label": "Jv (تراوش)",
+        "dynamic_jlymph_label": "Jlymph (لنفاوی کبد)",
+        "dynamic_jcapsule_label": "J_capsule (کپسول)",
+        "dynamic_jperit_label": "J_perit_lymph (لنفاوی صفاق)",
+        "dynamic_pi_label": "Pi (بین‌بافتی)",
+        "dynamic_pperit_label": "P_peritoneum (صفاقی)",
+        "dynamic_dp_label": "ΔP_portal (حلقه بازخورد)",
         "dynamic_threshold": "آستانه ۵۰۰ mL",
-        "dynamic_equilibrium": "نقطه تعادل",
-        "dynamic_pi_max_line": "Pi_max",
-        "dynamic_comparison": "📊 مقایسه مدل استاتیک و دینامیک",
+        "dynamic_comparison": "📊 مقایسه در طول زمان",
         "dynamic_time_col": "زمان",
-        "dynamic_static_col": "مدل استاتیک (خطی)",
-        "dynamic_dynamic_col": "مدل دینامیک (غیرخطی)",
-        "dynamic_1h": "۱ ساعت",
-        "dynamic_6h": "۶ ساعت",
-        "dynamic_24h": "۲۴ ساعت",
-        "dynamic_interpretation": "📌 مدل استاتیک پیش‌بینی‌های غیرواقعی می‌دهد. مدل دینامیک با در نظر گرفتن مکانیسم‌های جبرانی و اشباع Pi، پیش‌بینی واقع‌بینانه‌تری دارد.",
-        "dynamic_loading": "⏳ در حال حل معادله دیفرانسیل...",
+        "dynamic_vint_col": "V_int (mL)",
+        "dynamic_vasc_col": "V_asc (mL)",
+        "dynamic_dp_col": "ΔP (mmHg)",
+        "dynamic_1w": "۱ هفته",
+        "dynamic_2w": "۲ هفته",
+        "dynamic_4w": "۴ هفته",
+        "dynamic_interpretation": "📌 مدل دو-کپارتمانه نشان می‌دهد که مایع ابتدا در فضای بین‌بافتی (V_int) جمع می‌شود و سپس از کپسول به صفاق (V_asc) منتقل می‌شود. این دو مرحله، مقیاس زمانی هفته را ایجاد می‌کند. حلقه‌ی بازخورد فشار شکمی (ΔP = ΔP_0 + k_abdominal × V_asc) نیز با افزایش حجم آسیت، فشار پورتال را افزایش می‌دهد.",
+        "dynamic_loading": "⏳ در حال حل معادلات دو-کپارتمانه...",
 
         # Sensitivity Analysis
         "sensitivity_title": "📊 تحلیل حساسیت پیشرفته",
-        "sensitivity_subtitle": "تحلیل حساسیت پیشرفته با قابلیت Monte Carlo، Heatmap و Tornado Diagram",
+        "sensitivity_subtitle": "Monte Carlo، Heatmap و Tornado Diagram",
         "sensitivity_1d": "📈 یک‌بعدی",
         "sensitivity_2d": "🎯 دو‌بعدی",
         "sensitivity_tornado": "🌪️ Tornado Diagram",
@@ -743,7 +764,7 @@ TEXTS = {
 # Language Management
 # ============================================================
 if "lang" not in st.session_state:
-    st.session_state.lang = "en"
+    st.session_state.lang = "fa"
 
 
 def set_lang_en():
@@ -796,7 +817,6 @@ with st.sidebar:
     </style>
     """, unsafe_allow_html=True)
 
-    # Main Settings
     st.header(t["settings"])
     mode = st.radio(t["mode_label"], [t["mode_manual"], t["mode_auto"]])
 
@@ -851,27 +871,16 @@ else:
     mu_app = calc_mu_apparent(mu_inf, tau_y, gamma_dot)
     dp_sin = calc_sinusoid_pressure_drop(Q_total, mu_app, L, r0, beta)
     dp_h = rho_blood * g * h
-    dp_v = 0.5 * rho_blood * (vh**2 - vp**2)
+    dp_v = 0.5 * rho_blood * (vh ** 2 - vp ** 2)
     dp_total = dp_sin + dp_h + dp_v
 
 params = {
-    'alpha': alpha,
-    'Kf0': Kf0,
-    'sigma': sigma,
-    'Pi0': Pi0,
-    'Jmax': Jmax,
-    'Km': Km,
-    'mu_inf': mu_inf,
-    'tau_y': tau_y,
-    'r0': r0_um,
-    'beta': beta,
-    'dPi': dPi
+    'alpha': alpha, 'Kf0': Kf0, 'sigma': sigma, 'Pi0': Pi0,
+    'Jmax': Jmax, 'Km': Km, 'mu_inf': mu_inf, 'tau_y': tau_y,
+    'r0': r0_um, 'beta': beta, 'dPi': dPi
 }
 
 
-# ============================================================
-# Helper Functions
-# ============================================================
 def color_jnet(val):
     if val <= 0:
         return 'background-color: #d4edda'
@@ -1078,7 +1087,7 @@ else:
     st.info(t["info_text"])
 
     # ============================================================
-    # DYNAMIC ASCITES PREDICTION (NEW)
+    # DYNAMIC ASCITES PREDICTION (TWO-COMPARTMENT MODEL)
     # ============================================================
     st.divider()
     st.subheader(t["dynamic_title"])
@@ -1092,101 +1101,124 @@ else:
 
     col1, col2, col3, col4 = st.columns(4)
     with col1:
-        time_hours = st.slider(t["dynamic_time"], 1, 72, 24, 1)
+        time_weeks = st.slider(t["dynamic_time"], 1, 12, 6, 1)
     with col2:
         k_elastance = st.slider(t["dynamic_k_elastance"], 0.0001, 0.01, 0.001, 0.0001, format="%.4f")
     with col3:
-        Pi_max = st.slider(t["dynamic_pi_max"], 2.0, 15.0, 5.0, 0.5)
+        Kf_capsule_0 = st.slider(t["dynamic_kf_capsule"], 0.0001, 0.05, 0.00625, 0.0001, format="%.5f")
     with col4:
-        V0 = st.number_input(t["dynamic_V0"], 0, 1000, 0, 10)
+        k_abdominal = st.slider(t["dynamic_k_abdominal"], 0.0001, 0.005, 0.0005, 0.0001, format="%.4f")
+
+    col5, col6, col7 = st.columns(3)
+    with col5:
+        J_perit_max = st.slider(t["dynamic_j_perit_max"], 0.1, 5.0, 1.0, 0.1)
+    with col6:
+        K_perit = st.slider(t["dynamic_k_perit"], 100, 2000, 500, 50)
+    with col7:
+        P_perit_0 = st.slider(t["dynamic_p_perit_0"], 0.0, 5.0, 0.0, 0.5)
 
     if st.button(t["dynamic_run"], use_container_width=True, type="primary"):
         with st.spinner(t["dynamic_loading"]):
-            time_array, V_array, Jnet_array, Pi_array, Jv_array, Jlymph_array = predict_ascites_volume_dynamic(
-                Kf=Kf, alpha=alpha, sigma=sigma, dpi=dPi,
+            (time_array, V_int_array, V_asc_array,
+             Jv_array, Jlymph_array, Jcapsule_array,
+             Jperit_array, Pi_array, Pperit_array,
+             deltaP_array) = predict_ascites_two_compartment(
+                Kf_sinusoid=Kf, alpha=alpha, sigma=sigma, dpi=dPi,
                 P_hepatic=P_hep, Pi0=Pi0, k_elastance=k_elastance,
-                Jmax=Jmax, Km=Km, deltaP=deltaP_analysis,
-                time_hours=time_hours, V0=V0, dt=0.01, Pi_max=Pi_max
+                Kf_capsule_0=Kf_capsule_0, k_abdominal=k_abdominal,
+                P_perit_0=P_perit_0, Jmax=Jmax, Km=Km,
+                J_perit_max=J_perit_max, K_perit=K_perit,
+                deltaP_0=deltaP_analysis, time_weeks=time_weeks,
+                V_int_0=0.0, V_asc_0=0.0, dt=0.001
             )
 
-        st.success(t["dynamic_success"].format(time=time_hours))
+        st.success(t["dynamic_success"].format(time=time_weeks))
 
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.metric(t["dynamic_final_volume"], f"{V_array[-1]:.1f} mL")
+            st.metric(t["dynamic_final_vasc"], f"{V_asc_array[-1]:.1f} mL")
         with col2:
-            st.metric(t["dynamic_initial_jnet"], f"{Jnet_array[0]:.2f} ml/min")
+            st.metric(t["dynamic_final_vint"], f"{V_int_array[-1]:.1f} mL")
         with col3:
-            st.metric(t["dynamic_final_jnet"], f"{Jnet_array[-1]:.2f} ml/min")
+            st.metric(t["dynamic_final_pi"], f"{Pi_array[-1]:.2f} mmHg")
         with col4:
-            if Jnet_array[0] != 0:
-                reduction = ((Jnet_array[0] - Jnet_array[-1]) / Jnet_array[0] * 100)
-                st.metric(t["dynamic_jnet_reduction"], f"{reduction:.1f}%")
-            else:
-                st.metric(t["dynamic_jnet_reduction"], "0%")
+            st.metric(t["dynamic_final_dp"], f"{deltaP_array[-1]:.2f} mmHg")
 
+        # نمودار ۱: حجم‌ها
         fig_V = go.Figure()
-        fig_V.add_trace(go.Scatter(x=time_array, y=V_array, mode='lines',
-                                   name=t["dynamic_volume_title"],
+        fig_V.add_trace(go.Scatter(x=time_array, y=V_int_array, mode='lines',
+                                   name=t["dynamic_vint_label"],
+                                   line=dict(color='#00d2ff', width=3)))
+        fig_V.add_trace(go.Scatter(x=time_array, y=V_asc_array, mode='lines',
+                                   name=t["dynamic_vasc_label"],
                                    line=dict(color='#ff4b4b', width=3),
                                    fill='tozeroy', fillcolor='rgba(255,75,75,0.1)'))
         fig_V.add_hline(y=500, line_dash='dash', line_color='orange',
                         annotation_text=t["dynamic_threshold"], annotation_position='top right')
-        fig_V.update_layout(title=f'<b>{t["dynamic_volume_title"]}</b>',
+        fig_V.update_layout(title=f'<b>{t["dynamic_volumes_title"]}</b>',
                             xaxis_title=t["dynamic_time_axis"],
                             yaxis_title=t["dynamic_volume_axis"],
-                            template=get_plotly_template(), height=400, hovermode='x unified')
+                            template=get_plotly_template(), height=450, hovermode='x unified')
         st.plotly_chart(fig_V, use_container_width=True)
 
-        fig_Jnet = go.Figure()
-        fig_Jnet.add_trace(go.Scatter(x=time_array, y=Jnet_array, mode='lines',
-                                      name='Jnet', line=dict(color='#7c3aed', width=3)))
-        fig_Jnet.add_hline(y=0, line_dash='dot', line_color='gray',
-                           annotation_text=t["dynamic_equilibrium"], annotation_position='bottom right')
-        fig_Jnet.update_layout(title=f'<b>{t["dynamic_jnet_title"]}</b>',
-                               xaxis_title=t["dynamic_time_axis"],
-                               yaxis_title=t["dynamic_jnet_axis"],
-                               template=get_plotly_template(), height=400, hovermode='x unified')
-        st.plotly_chart(fig_Jnet, use_container_width=True)
+        # نمودار ۲: جریان‌ها
+        fig_J = go.Figure()
+        fig_J.add_trace(go.Scatter(x=time_array, y=Jv_array, mode='lines',
+                                   name=t["dynamic_jv_label"], line=dict(color='blue', width=3)))
+        fig_J.add_trace(go.Scatter(x=time_array, y=Jlymph_array, mode='lines',
+                                   name=t["dynamic_jlymph_label"], line=dict(color='green', width=3, dash='dash')))
+        fig_J.add_trace(go.Scatter(x=time_array, y=Jcapsule_array, mode='lines',
+                                   name=t["dynamic_jcapsule_label"], line=dict(color='purple', width=3, dash='dot')))
+        fig_J.add_trace(go.Scatter(x=time_array, y=Jperit_array, mode='lines',
+                                   name=t["dynamic_jperit_label"], line=dict(color='orange', width=3, dash='dashdot')))
+        fig_J.update_layout(title=f'<b>{t["dynamic_flows_title"]}</b>',
+                            xaxis_title=t["dynamic_time_axis"],
+                            yaxis_title=t["dynamic_flow_axis"],
+                            template=get_plotly_template(), height=450, hovermode='x unified')
+        st.plotly_chart(fig_J, use_container_width=True)
 
-        fig_Pi = go.Figure()
-        fig_Pi.add_trace(go.Scatter(x=time_array, y=Pi_array, mode='lines',
-                                    name='Pi', line=dict(color='#f9a825', width=3)))
-        fig_Pi.add_hline(y=Pi_max, line_dash='dash', line_color='red',
-                         annotation_text=t["dynamic_pi_max_line"], annotation_position='top right')
-        fig_Pi.update_layout(title=f'<b>{t["dynamic_pi_title"]}</b>',
-                             xaxis_title=t["dynamic_time_axis"],
-                             yaxis_title=t["dynamic_pi_axis"],
-                             template=get_plotly_template(), height=400, hovermode='x unified')
-        st.plotly_chart(fig_Pi, use_container_width=True)
+        # نمودار ۳: فشارها
+        fig_P = go.Figure()
+        fig_P.add_trace(go.Scatter(x=time_array, y=Pi_array, mode='lines',
+                                   name=t["dynamic_pi_label"], line=dict(color='#f9a825', width=3)))
+        fig_P.add_trace(go.Scatter(x=time_array, y=Pperit_array, mode='lines',
+                                   name=t["dynamic_pperit_label"], line=dict(color='#e91e63', width=3)))
+        fig_P.add_trace(go.Scatter(x=time_array, y=deltaP_array, mode='lines',
+                                   name=t["dynamic_dp_label"], line=dict(color='#7c3aed', width=3, dash='dot')))
+        fig_P.update_layout(title=f'<b>{t["dynamic_pressures_title"]}</b>',
+                            xaxis_title=t["dynamic_time_axis"],
+                            yaxis_title=t["dynamic_pressure_axis"],
+                            template=get_plotly_template(), height=450, hovermode='x unified')
+        st.plotly_chart(fig_P, use_container_width=True)
 
-        fig_flows = go.Figure()
-        fig_flows.add_trace(go.Scatter(x=time_array, y=Jv_array, mode='lines',
-                                       name='Jv (Filtration)', line=dict(color='blue', width=3)))
-        fig_flows.add_trace(go.Scatter(x=time_array, y=Jlymph_array, mode='lines',
-                                       name='Jlymph (Lymphatic)', line=dict(color='green', width=3, dash='dash')))
-        fig_flows.update_layout(title=f'<b>{t["dynamic_flows_title"]}</b>',
-                                xaxis_title=t["dynamic_time_axis"],
-                                yaxis_title=t["dynamic_flow_axis"],
-                                template=get_plotly_template(), height=400, hovermode='x unified')
-        st.plotly_chart(fig_flows, use_container_width=True)
+        # نمودار ۴: فاز
+        fig_phase = go.Figure()
+        fig_phase.add_trace(go.Scatter(x=deltaP_array, y=V_asc_array, mode='lines',
+                                       name='V_asc vs ΔP',
+                                       line=dict(color='#ff4b4b', width=3)))
+        fig_phase.add_vline(x=12, line_dash='dash', line_color='red',
+                            annotation_text=t["threshold_line"])
+        fig_phase.update_layout(title=f'<b>{t["dynamic_phase_title"]}</b>',
+                                xaxis_title=t["dynamic_dp_axis"],
+                                yaxis_title=t["dynamic_volume_axis"],
+                                template=get_plotly_template(), height=450)
+        st.plotly_chart(fig_phase, use_container_width=True)
 
+        # جدول مقایسه
         st.subheader(t["dynamic_comparison"])
-        V_static_1h = Jnet_array[0] * 60
-        V_static_6h = Jnet_array[0] * 360
-        V_static_24h = Jnet_array[0] * 1440
-
+        idx_1w = int(1 / time_weeks * (len(time_array) - 1))
+        idx_2w = int(2 / time_weeks * (len(time_array) - 1))
+        idx_4w = int(4 / time_weeks * (len(time_array) - 1))
+        
         comparison_data = {
-            t["dynamic_time_col"]: [t["dynamic_1h"], t["dynamic_6h"], t["dynamic_24h"]],
-            t["dynamic_static_col"]: [f"{V_static_1h:.0f} mL", f"{V_static_6h:.0f} mL", f"{V_static_24h:.0f} mL"],
-            t["dynamic_dynamic_col"]: [
-                f"{np.interp(1, time_array, V_array):.0f} mL",
-                f"{np.interp(6, time_array, V_array):.0f} mL",
-                f"{np.interp(24, time_array, V_array):.0f} mL"
-            ]
+            t["dynamic_time_col"]: [t["dynamic_1w"], t["dynamic_2w"], t["dynamic_4w"]],
+            t["dynamic_vint_col"]: [f"{V_int_array[idx_1w]:.0f}", f"{V_int_array[idx_2w]:.0f}", f"{V_int_array[idx_4w]:.0f}"],
+            t["dynamic_vasc_col"]: [f"{V_asc_array[idx_1w]:.0f}", f"{V_asc_array[idx_2w]:.0f}", f"{V_asc_array[idx_4w]:.0f}"],
+            t["dynamic_dp_col"]: [f"{deltaP_array[idx_1w]:.2f}", f"{deltaP_array[idx_2w]:.2f}", f"{deltaP_array[idx_4w]:.2f}"]
         }
-        df_comparison = pd.DataFrame(comparison_data)
-        st.dataframe(df_comparison, use_container_width=True, hide_index=True)
+        df_comp = pd.DataFrame(comparison_data)
+        st.dataframe(df_comp, use_container_width=True, hide_index=True)
+
         st.info(t["dynamic_interpretation"])
 
 
@@ -1656,7 +1688,7 @@ with st.expander(t["sensitivity_title"], expanded=False):
 
 
 # ============================================================
-# PRESETS, CACHE, CSV UPLOAD, 3D PLOT, VALIDATION, RESET
+# SIDEBAR EXTRA, CSV UPLOAD, 3D PLOT, VALIDATION, RESET
 # ============================================================
 with st.sidebar:
     st.divider()
@@ -1766,10 +1798,11 @@ with st.sidebar:
             del st.session_state[key]
         st.rerun()
 
+
 # ============================================================
 # Footer
 # ============================================================
 st.divider()
 st.caption(t["footer"])
-st.caption("Ver:6.0.0 (Full UI + Dynamic Ascites Model)")
+st.caption("Ver:8.0.0 (Two-Compartment Model)")
 st.caption("Ali Hosseini; email: ali.hosseini1387@icloud.com")
